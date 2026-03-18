@@ -9,6 +9,7 @@ interface SeasonPanelProps {
   seasonNumber: number;
   episodes: SonarrEpisode[];
   monitored: boolean;
+  seriesId: number;
   onToggleEpisodeMonitor?: (episodeId: number, monitored: boolean) => void;
 }
 
@@ -16,6 +17,7 @@ export function SeasonPanel({
   seasonNumber,
   episodes,
   monitored,
+  seriesId,
   onToggleEpisodeMonitor,
 }: SeasonPanelProps) {
   const [expanded, setExpanded] = useState(false);
@@ -58,6 +60,7 @@ export function SeasonPanel({
               <EpisodeRow
                 key={ep.id}
                 episode={ep}
+                seriesId={seriesId}
                 onToggleMonitor={onToggleEpisodeMonitor}
               />
             ))}

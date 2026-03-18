@@ -391,6 +391,7 @@ export default function SeriesDetailPage({
               seasonNumber={seasonNumber}
               episodes={seasonEpisodes ?? []}
               monitored={seasonInfo?.monitored ?? true}
+              seriesId={seriesId}
             />
           );
         })}
