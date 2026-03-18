@@ -2,8 +2,7 @@ services:
   servr-dash:
     build: .
     container_name: servr-dash
-    ports:
-      - "3000:3000"
+    network_mode: host
     volumes:
       # Persistent config (servers, users, plex token, radarr/sonarr settings)
       - servr-config:/app/config
