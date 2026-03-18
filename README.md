@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Self-hosted server dashboard for your homelab</strong><br/>
-  SSH monitoring · Docker management · Plex · Radarr · Sonarr
+  SSH monitoring · Docker · Plex · Radarr · Sonarr · Synology Backups
 </p>
 
 <p align="center">
@@ -43,19 +43,38 @@
 
 ### Radarr (Movies)
 - Full **movie library** with poster grid (adjustable sizes)
-- **Add movies** with search, quality profile & root folder selection
+- **Add movies** with TMDB trending suggestions & search
 - Movie detail page with metadata, file info, action buttons
+- **Edit movies** — change quality profile, availability, path, monitoring
 - **Manual search** — browse & grab individual releases from indexers
 - **Download queue** with progress, ETA, quality info
 - **Calendar** — upcoming cinema, digital & physical releases
 
 ### Sonarr (TV Series)
 - Full **series library** with poster grid (adjustable sizes)
-- **Add series** with search, quality profile, series type & root folder
+- **Add series** with TMDB trending suggestions & search
 - Series detail with **season/episode accordion**, per-episode status
+- **Edit series** — change quality profile, series type, season folders, path
+- **Per-episode manual search** — popup modal to browse & grab releases
 - **Manual search** — browse & grab releases per series
 - **Download queue** with episode info, progress & ETA
 - **Calendar** — upcoming episodes for next 14 days
+
+### Synology Active Backup for Business
+- **Backup overview** — device count, task count, last 24h stats, total storage
+- **Device list** — all connected backup clients with online/offline status
+- Per-device: IP, OS, last/next backup time, backup size, agent version
+- **Backup tasks** — all configured tasks with status (active/running/paused)
+- **Backup history** — chronological log grouped by date
+- Per-entry: status (success/warning/error), duration, transferred data
+- Synology DSM API with session caching and auto-retry on expiry
+
+### TMDB Integration
+- **Trending, Popular & Upcoming** suggestions when adding movies/series
+- Poster grid with ratings, titles, year
+- Click to auto-search in Radarr/Sonarr
+- German language results
+- Configurable via free TMDB API key
 
 ### Dashboard
 - Aggregated overview from **all services** on one page
@@ -70,6 +89,8 @@
 - Add/edit/remove SSH servers via UI (no config file editing)
 - Plex OAuth login button
 - Radarr & Sonarr URL + API key configuration
+- Synology NAS URL + credentials
+- TMDB API key for trending suggestions
 - User management (add/remove users, admin/user roles)
 
 ### General
@@ -141,6 +162,8 @@ All services are configured through the **Settings** page (`/settings`):
 2. **Plex** — Click "Mit Plex anmelden" for OAuth login
 3. **Radarr** — Enter URL + API key (from Radarr Settings General)
 4. **Sonarr** — Enter URL + API key (from Sonarr Settings General)
+5. **Synology** — Enter NAS URL, username & password
+6. **TMDB** — Enter free API Read Access Token from themoviedb.org
 
 ### Docker Volumes
 
