@@ -17,8 +17,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useSynologyOverview, useSynologyLogs } from "@/hooks/useSynology";
-import { formatBytes } from "@/lib/utils";
-
 function formatTimestamp(ts: number): string {
   if (!ts) return "–";
   return new Date(ts * 1000).toLocaleString("de-DE", {
@@ -32,13 +30,13 @@ function formatTimestamp(ts: number): string {
 
 function getStatusInfo(status: number) {
   switch (status) {
-    case 1:
-      return { label: "Erfolgreich", color: "success" as const, icon: CheckCircle2 };
     case 2:
-      return { label: "Warnung", color: "warning" as const, icon: AlertTriangle };
+      return { label: "Erfolgreich", color: "success" as const, icon: CheckCircle2 };
     case 3:
-      return { label: "Fehlgeschlagen", color: "danger" as const, icon: XCircle };
+      return { label: "Warnung", color: "warning" as const, icon: AlertTriangle };
     case 4:
+      return { label: "Fehlgeschlagen", color: "danger" as const, icon: XCircle };
+    case 5:
       return { label: "Abgebrochen", color: "default" as const, icon: XCircle };
     default:
       return { label: "Läuft", color: "info" as const, icon: Clock };
@@ -92,7 +90,7 @@ export default function BackupsPage() {
             <StatCard
               label="Tasks"
               value={overview.total_tasks}
-              sub={`${overview.active_tasks} aktiv`}
+              sub={`${overview.scheduled_tasks} geplant`}
               icon={<ListChecks size={18} />}
               color="purple"
             />
@@ -104,12 +102,11 @@ export default function BackupsPage() {
               color={overview.error_count > 0 ? "red" : "emerald"}
             />
             <StatCard
-              label="Speicher"
-              value={formatBytes(overview.total_backup_size)}
-              sub="Gesamt"
+              label="Geplant"
+              value={overview.scheduled_tasks}
+              sub={`von ${overview.total_tasks} Tasks`}
               icon={<HardDrive size={18} />}
               color="amber"
-              isText
             />
           </div>
 
@@ -153,7 +150,7 @@ export default function BackupsPage() {
                   const Icon = info.icon;
                   return (
                     <div
-                      key={log.log_id || i}
+                      key={log.result_id || i}
                       className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]"
                     >
                       <Icon
@@ -170,12 +167,12 @@ export default function BackupsPage() {
                       />
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium truncate block">
-                          {log.device_name || log.task_name || `Task ${log.task_id}`}
+                          {log.device_name || log.task_name}
                         </span>
                         <span className="text-[10px] text-muted">
                           {formatTimestamp(log.time_end)}
-                          {log.transferred_bytes
-                            ? ` · ${formatBytes(log.transferred_bytes)}`
+                          {log.duration_seconds > 0
+                            ? ` · ${Math.floor(log.duration_seconds / 60)}m`
                             : ""}
                         </span>
                       </div>

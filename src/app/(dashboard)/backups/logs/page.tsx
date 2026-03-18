@@ -1,20 +1,21 @@
 "use client";
 
 import {
-  ScrollText,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   Clock,
   ArrowLeft,
+  Laptop,
+  Server,
+  Monitor,
 } from "lucide-react";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useSynologyLogs } from "@/hooks/useSynology";
-import { formatBytes } from "@/lib/utils";
 
 function formatTimestamp(ts: number): string {
   if (!ts) return "–";
@@ -27,53 +28,31 @@ function formatTimestamp(ts: number): string {
   });
 }
 
-function formatDuration(start: number, end: number): string {
-  if (!start || !end) return "–";
-  const diff = end - start;
-  if (diff < 60) return `${diff}s`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ${diff % 60}s`;
-  const h = Math.floor(diff / 3600);
-  const m = Math.floor((diff % 3600) / 60);
+function formatDuration(seconds: number): string {
+  if (!seconds || seconds < 0) return "–";
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
   return `${h}h ${m}m`;
 }
 
-function getStatusInfo(status: number) {
+function getStatusIcon(status: number) {
   switch (status) {
-    case 1:
-      return {
-        label: "Erfolgreich",
-        color: "success" as const,
-        icon: CheckCircle2,
-        iconColor: "text-accent-emerald",
-      };
-    case 2:
-      return {
-        label: "Warnung",
-        color: "warning" as const,
-        icon: AlertTriangle,
-        iconColor: "text-accent-amber",
-      };
-    case 3:
-      return {
-        label: "Fehlgeschlagen",
-        color: "danger" as const,
-        icon: XCircle,
-        iconColor: "text-accent-red",
-      };
-    case 4:
-      return {
-        label: "Abgebrochen",
-        color: "default" as const,
-        icon: XCircle,
-        iconColor: "text-muted",
-      };
-    default:
-      return {
-        label: "Läuft",
-        color: "info" as const,
-        icon: Clock,
-        iconColor: "text-accent-cyan",
-      };
+    case 2: return { Icon: CheckCircle2, color: "text-accent-emerald", bg: "bg-accent-emerald/10" };
+    case 3: return { Icon: AlertTriangle, color: "text-accent-amber", bg: "bg-accent-amber/10" };
+    case 4: return { Icon: XCircle, color: "text-accent-red", bg: "bg-accent-red/10" };
+    case 5: return { Icon: XCircle, color: "text-muted", bg: "bg-white/[0.04]" };
+    default: return { Icon: Clock, color: "text-accent-cyan", bg: "bg-accent-cyan/10" };
+  }
+}
+
+function getTypeIcon(type: number) {
+  switch (type) {
+    case 1: return <Server size={10} />;
+    case 2: return <Laptop size={10} />;
+    case 3: return <Monitor size={10} />;
+    default: return null;
   }
 }
 
@@ -125,52 +104,41 @@ export default function BackupLogsPage() {
             <div key={date}>
               <h3 className="text-xs font-medium text-muted mb-3">{date}</h3>
               <div className="space-y-2">
-                {dateLogs!.map((log, i) => {
-                  const info = getStatusInfo(log.status);
-                  const Icon = info.icon;
+                {dateLogs!.map((log) => {
+                  const { Icon, color, bg } = getStatusIcon(log.status);
 
                   return (
                     <div
-                      key={log.log_id || i}
+                      key={log.result_id}
                       className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.03] transition-colors"
                     >
-                      <div
-                        className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${
-                          info.color === "success"
-                            ? "bg-accent-emerald/10"
-                            : info.color === "danger"
-                              ? "bg-accent-red/10"
-                              : info.color === "warning"
-                                ? "bg-accent-amber/10"
-                                : "bg-white/[0.04]"
-                        }`}
-                      >
-                        <Icon size={16} className={info.iconColor} />
+                      <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
+                        <Icon size={16} className={color} />
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium truncate">
-                            {log.device_name ||
-                              log.task_name ||
-                              `Task ${log.task_id}`}
+                            {log.device_name}
                           </span>
-                          <Badge variant={info.color}>{info.label}</Badge>
+                          <Badge variant={log.status === 2 ? "success" : log.status === 4 ? "danger" : "warning"}>
+                            {log.status_label}
+                          </Badge>
+                          <Badge variant="default">
+                            {log.backup_type_label}
+                          </Badge>
                         </div>
                         <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-[10px] text-muted">
                           <span>
-                            {formatTimestamp(log.time_start)} →{" "}
-                            {formatTimestamp(log.time_end)}
+                            {formatTimestamp(log.time_start)} → {formatTimestamp(log.time_end)}
                           </span>
                           <span>
-                            Dauer: {formatDuration(log.time_start, log.time_end)}
+                            Dauer: {formatDuration(log.duration_seconds)}
                           </span>
-                          {log.transferred_bytes != null &&
-                            log.transferred_bytes > 0 && (
-                              <span>
-                                Übertragen: {formatBytes(log.transferred_bytes)}
-                              </span>
-                            )}
+                          <span className="flex items-center gap-0.5">
+                            {getTypeIcon(log.backup_type)}
+                            {log.task_name}
+                          </span>
                         </div>
                       </div>
                     </div>
