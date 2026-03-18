@@ -50,6 +50,7 @@ export default function SettingsPage() {
           defaultPort={8989}
           statusEndpoint="/api/sonarr/status"
         />
+        <SynologySettings />
         <TmdbSettings />
         <UserManagement />
       </div>
@@ -918,6 +919,172 @@ function UserManagement() {
             </button>
           </div>
         ))}
+      </div>
+    </Card>
+  );
+}
+
+// --- Synology Settings ---
+
+function SynologySettings() {
+  const [config, setConfig] = useState<AppConfig | null>(null);
+  const [url, setUrl] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<"untested" | "ok" | "error">("untested");
+
+  const loadConfig = useCallback(async () => {
+    const res = await fetch("/api/config");
+    const data = await res.json();
+    setConfig(data);
+    const syn = data.synology;
+    if (syn) {
+      setUrl(syn.url || "");
+      setUsername(syn.username || "");
+      setPassword(syn.password || "");
+    }
+  }, []);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  useEffect(() => {
+    if (!url || !username || !password) {
+      setStatus("untested");
+      return;
+    }
+    // Check connection on load if configured
+    fetch("/api/synology/status")
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data) => setStatus(data.success ? "ok" : "error"))
+      .catch(() => setStatus("error"));
+  }, [url, username, password]);
+
+  const handleSave = async () => {
+    if (!config) return;
+    setSaving(true);
+    try {
+      const newConfig = {
+        ...config,
+        synology: { url: url.replace(/\/$/, ""), username, password },
+      };
+      await fetch("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newConfig),
+      });
+      setConfig(newConfig as AppConfig);
+      // Test connection
+      setTimeout(async () => {
+        try {
+          const res = await fetch("/api/synology/status");
+          const data = await res.json();
+          setStatus(data.success ? "ok" : "error");
+        } catch {
+          setStatus("error");
+        }
+      }, 500);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!config || !confirm("Synology Verbindung wirklich entfernen?")) return;
+    setSaving(true);
+    try {
+      const newConfig = { ...config };
+      delete newConfig.synology;
+      await fetch("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newConfig),
+      });
+      setConfig(newConfig as AppConfig);
+      setUrl("");
+      setUsername("");
+      setPassword("");
+      setStatus("untested");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isConfigured = !!(url && username && password);
+  const inputClass =
+    "w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent-cyan/50 focus:shadow-[0_0_15px_-5px_rgba(34,211,238,0.3)] transition-all duration-200";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Synology Active Backup</CardTitle>
+        <Shield size={16} className="text-accent-emerald" />
+      </CardHeader>
+
+      {status === "ok" && (
+        <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] mb-4">
+          <div className="flex items-center gap-3">
+            <StatusDot status="online" />
+            <div>
+              <span className="font-medium text-sm">Synology NAS</span>
+              <span className="text-xs text-muted ml-2">Verbunden</span>
+            </div>
+          </div>
+          <button
+            onClick={handleRemove}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-accent-red hover:bg-accent-red/10 transition-colors"
+          >
+            <LogOut size={14} />
+            Trennen
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div>
+          <label className="text-xs text-muted mb-1 block">NAS URL</label>
+          <input
+            className={inputClass}
+            placeholder="https://192.168.1.5:5001"
+            value={url}
+            onChange={(e) => { setUrl(e.target.value); setStatus("untested"); }}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-muted mb-1 block">Benutzername</label>
+          <input
+            className={inputClass}
+            placeholder="admin"
+            value={username}
+            onChange={(e) => { setUsername(e.target.value); setStatus("untested"); }}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-muted mb-1 block">Passwort</label>
+          <input
+            className={inputClass}
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); setStatus("untested"); }}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSave}
+          disabled={saving || !url || !username || !password}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-cyan text-background text-sm font-medium hover:bg-accent-cyan/90 transition-colors disabled:opacity-50"
+        >
+          <Save size={14} />
+          {saving ? "Speichern..." : "Speichern"}
+        </button>
+        {isConfigured && status === "error" && (
+          <Badge variant="danger">Nicht erreichbar</Badge>
+        )}
       </div>
     </Card>
   );

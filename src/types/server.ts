@@ -83,6 +83,11 @@ export interface AppConfig {
   };
   radarr?: ArrConfig;
   sonarr?: ArrConfig;
+  synology?: {
+    url: string;
+    username: string;
+    password: string;
+  };
   tmdbApiKey?: string;
   [key: string]: unknown;
 }
