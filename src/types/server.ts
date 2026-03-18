@@ -83,6 +83,9 @@ export interface AppConfig {
   };
   radarr?: ArrConfig;
   sonarr?: ArrConfig;
+  cloudflare?: {
+    apiToken: string;
+  };
   synology?: {
     url: string;
     username: string;

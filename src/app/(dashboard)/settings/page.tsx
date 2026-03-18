@@ -22,6 +22,7 @@ import {
   UserPlus,
   Shield,
   TrendingUp,
+  Globe,
 } from "lucide-react";
 import type { ServerConfig, AppConfig } from "@/types/server";
 import type { SafeUser } from "@/types/auth";
@@ -50,6 +51,7 @@ export default function SettingsPage() {
           defaultPort={8989}
           statusEndpoint="/api/sonarr/status"
         />
+        <CloudflareSettings />
         <SynologySettings />
         <TmdbSettings />
         <UserManagement />
@@ -920,6 +922,101 @@ function UserManagement() {
           </div>
         ))}
       </div>
+    </Card>
+  );
+}
+
+// --- Cloudflare Settings ---
+
+function CloudflareSettings() {
+  const [config, setConfig] = useState<AppConfig | null>(null);
+  const [apiToken, setApiToken] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<"untested" | "ok" | "error">("untested");
+
+  const loadConfig = useCallback(async () => {
+    const res = await fetch("/api/config");
+    const data = await res.json();
+    setConfig(data);
+    setApiToken((data.cloudflare as Record<string, unknown>)?.apiToken as string || "");
+  }, []);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  const handleSave = async () => {
+    if (!config) return;
+    setSaving(true);
+    try {
+      const newConfig = { ...config, cloudflare: { apiToken } };
+      await fetch("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newConfig),
+      });
+      setConfig(newConfig as AppConfig);
+      if (apiToken) {
+        const res = await fetch("/api/cloudflare/zones");
+        setStatus(res.ok ? "ok" : "error");
+      } else {
+        setStatus("untested");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputClass =
+    "w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent-cyan/50 focus:shadow-[0_0_15px_-5px_rgba(34,211,238,0.3)] transition-all duration-200";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Cloudflare DNS</CardTitle>
+        <Globe size={16} className="text-accent-cyan" />
+      </CardHeader>
+
+      <p className="text-xs text-muted mb-4">
+        API Token mit &quot;Edit zone DNS&quot; Berechtigung von{" "}
+        <a
+          href="https://dash.cloudflare.com/profile/api-tokens"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent-cyan hover:underline"
+        >
+          Cloudflare Dashboard
+        </a>
+        .
+      </p>
+
+      <div className="flex gap-3 items-end">
+        <div className="flex-1">
+          <label className="text-xs text-muted mb-1 block">API Token</label>
+          <input
+            className={inputClass}
+            type="password"
+            placeholder="Token mit DNS-Berechtigungen"
+            value={apiToken}
+            onChange={(e) => { setApiToken(e.target.value); setStatus("untested"); }}
+          />
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-cyan text-background text-sm font-medium hover:bg-accent-cyan/90 transition-colors disabled:opacity-50"
+        >
+          <Save size={14} />
+          {saving ? "..." : "Speichern"}
+        </button>
+      </div>
+
+      {status === "ok" && (
+        <p className="text-xs text-accent-emerald mt-2">✓ Token gültig</p>
+      )}
+      {status === "error" && (
+        <p className="text-xs text-accent-red mt-2">✗ Token ungültig oder keine Berechtigungen</p>
+      )}
     </Card>
   );
 }

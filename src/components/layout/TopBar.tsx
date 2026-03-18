@@ -25,6 +25,7 @@ const pageTitles: Record<string, string> = {
   "/backups/devices": "Backup-Geräte",
   "/backups/tasks": "Backup-Tasks",
   "/backups/logs": "Backup-Verlauf",
+  "/dns": "DNS Management",
   "/plex": "Plex",
   "/plex/streams": "Active Streams",
   "/settings": "Einstellungen",

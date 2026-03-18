@@ -23,6 +23,7 @@ import {
   Monitor,
   ListChecks,
   ScrollText,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -88,6 +89,11 @@ const navItems: NavItem[] = [
     label: "Plex",
     href: "/plex",
     icon: <Tv size={20} />,
+  },
+  {
+    label: "DNS",
+    href: "/dns",
+    icon: <Globe size={20} />,
   },
   {
     label: "Einstellungen",
