@@ -1,9 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Plus, Check, X, Tv } from "lucide-react";
+import { createPortal } from "react-dom";
+import {
+  Search,
+  Plus,
+  Check,
+  X,
+  Tv,
+  Star,
+  Calendar,
+  Clock,
+  AlertCircle,
+  ArrowLeft,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import {
@@ -15,45 +26,17 @@ import {
 import type { SonarrLookupResult } from "@/types/sonarr";
 import { TrendingGrid } from "@/components/ui/TrendingGrid";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 export default function AddSeriesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<SonarrLookupResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-
-  // Config data
-  const { data: profiles } = useSonarrProfiles();
-  const { data: rootFolders } = useSonarrRootFolders();
-
-  // Add form state
-  const [selectedProfile, setSelectedProfile] = useState<number>(0);
-  const [selectedRoot, setSelectedRoot] = useState("");
-  const [seriesType, setSeriesType] = useState("standard");
-  const [seasonFolder, setSeasonFolder] = useState(true);
-  const [monitored, setMonitored] = useState(true);
-  const [addingId, setAddingId] = useState<number | null>(null);
-  const [addResult, setAddResult] = useState<{
-    id: number;
-    success: boolean;
+  const [selected, setSelected] = useState<SonarrLookupResult | null>(null);
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
     message: string;
   } | null>(null);
 
-  // Set defaults when config loads
-  useEffect(() => {
-    if (profiles?.length && !selectedProfile) {
-      setSelectedProfile(profiles[0].id);
-    }
-  }, [profiles, selectedProfile]);
-
-  useEffect(() => {
-    if (rootFolders?.length && !selectedRoot) {
-      setSelectedRoot(rootFolders[0].path);
-    }
-  }, [rootFolders, selectedRoot]);
-
-  // Debounced search
   const doSearch = useCallback(async (term: string) => {
     if (!term || term.length < 2) {
       setResults([]);
@@ -75,49 +58,6 @@ export default function AddSeriesPage() {
     return () => clearTimeout(timeout);
   }, [searchTerm, doSearch]);
 
-  async function handleAdd(result: SonarrLookupResult) {
-    setAddingId(result.tvdbId);
-    setAddResult(null);
-    try {
-      await addSeries({
-        tvdbId: result.tvdbId,
-        title: result.title,
-        qualityProfileId: selectedProfile,
-        rootFolderPath: selectedRoot,
-        seriesType,
-        seasonFolder,
-        monitored,
-        images: result.images,
-        seasons: result.seasons.map((s) => ({
-          seasonNumber: s.seasonNumber,
-          monitored,
-        })),
-        addOptions: {
-          searchForMissingEpisodes: monitored,
-        },
-      });
-      setAddResult({
-        id: result.tvdbId,
-        success: true,
-        message: "Serie erfolgreich hinzugefügt",
-      });
-    } catch (err) {
-      setAddResult({
-        id: result.tvdbId,
-        success: false,
-        message:
-          err instanceof Error ? err.message : "Fehler beim Hinzufügen",
-      });
-    } finally {
-      setAddingId(null);
-    }
-  }
-
-  function getPosterUrl(result: SonarrLookupResult): string | null {
-    const poster = result.images.find((img) => img.coverType === "poster");
-    return poster?.remoteUrl || null;
-  }
-
   return (
     <div>
       <Link
@@ -133,6 +73,24 @@ export default function AddSeriesPage() {
         description="Suche nach TV-Serien und füge sie zu Sonarr hinzu"
       />
 
+      {/* Feedback */}
+      {feedback && (
+        <div
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg mb-4 text-sm ${
+            feedback.type === "success"
+              ? "bg-accent-emerald/10 text-accent-emerald border border-accent-emerald/20"
+              : "bg-accent-red/10 text-accent-red border border-accent-red/20"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <Check size={16} />
+          ) : (
+            <AlertCircle size={16} />
+          )}
+          {feedback.message}
+        </div>
+      )}
+
       {/* Search */}
       <div className="relative mb-6">
         <Search
@@ -143,11 +101,72 @@ export default function AddSeriesPage() {
           type="text"
           placeholder="Serie suchen..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-white/[0.06] bg-white/[0.03] text-sm placeholder:text-muted focus:outline-none focus:border-accent-cyan/40 focus:ring-1 focus:ring-accent-cyan/20 transition-colors"
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setFeedback(null);
+          }}
+          className="w-full pl-9 pr-4 py-3 rounded-lg border border-white/[0.06] bg-white/[0.04] text-sm placeholder:text-muted focus:outline-none focus:border-accent-cyan/50 focus:shadow-[0_0_12px_-4px_rgba(34,211,238,0.3)] transition-all"
           autoFocus
         />
+        {searching && (
+          <Spinner className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4" />
+        )}
       </div>
+
+      {/* Results grid */}
+      {!searching && results.length > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+          {results.map((result) => {
+            const poster = result.images.find(
+              (img) => img.coverType === "poster"
+            )?.remoteUrl;
+
+            return (
+              <button
+                key={result.tvdbId}
+                onClick={() => setSelected(result)}
+                className="group text-left rounded-xl border border-white/[0.04] overflow-hidden hover:border-accent-cyan/30 hover:shadow-[0_0_20px_-8px_rgba(34,211,238,0.2)] transition-all duration-300"
+              >
+                <div className="relative aspect-[2/3] bg-white/[0.02]">
+                  {poster ? (
+                    <img
+                      src={poster}
+                      alt={result.title}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Tv size={28} className="text-muted/20" />
+                    </div>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+                  {result.ratings && result.ratings.value > 0 && (
+                    <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-medium">
+                      <Star
+                        size={9}
+                        className="text-accent-amber fill-accent-amber"
+                      />
+                      {result.ratings.value.toFixed(1)}
+                    </div>
+                  )}
+
+                  <div className="absolute inset-x-0 bottom-0 p-2">
+                    <p className="text-xs font-medium leading-tight line-clamp-2">
+                      {result.title}
+                    </p>
+                    <p className="text-[10px] text-white/50 mt-0.5">
+                      {result.year}
+                      {result.network ? ` · ${result.network}` : ""}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Loading */}
       {searching && (
@@ -156,192 +175,7 @@ export default function AddSeriesPage() {
         </div>
       )}
 
-      {/* Results */}
-      {!searching && results.length > 0 && (
-        <div className="space-y-3">
-          {results.map((result) => {
-            const poster = getPosterUrl(result);
-            const isExpanded = expandedId === result.tvdbId;
-            const resultStatus = addResult?.id === result.tvdbId ? addResult : null;
-
-            return (
-              <Card key={result.tvdbId} className="overflow-hidden">
-                <div
-                  className="flex gap-4 cursor-pointer"
-                  onClick={() =>
-                    setExpandedId(isExpanded ? null : result.tvdbId)
-                  }
-                >
-                  {/* Poster */}
-                  <div className="shrink-0 w-16 h-24 rounded-lg overflow-hidden bg-white/[0.02]">
-                    {poster ? (
-                      <img
-                        src={poster}
-                        alt={result.title}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Tv size={24} className="text-muted" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium truncate">
-                      {result.title}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-muted">{result.year}</span>
-                      {result.network && (
-                        <Badge variant="default">{result.network}</Badge>
-                      )}
-                      <Badge
-                        variant={
-                          result.status === "continuing" ? "info" : "default"
-                        }
-                      >
-                        {result.status === "continuing"
-                          ? "Fortlaufend"
-                          : "Beendet"}
-                      </Badge>
-                      <span className="text-xs text-muted">
-                        {result.seasons.length} Staffeln
-                      </span>
-                    </div>
-                    {result.overview && (
-                      <p className="text-xs text-muted mt-1.5 line-clamp-2">
-                        {result.overview}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Expanded config panel */}
-                {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-white/[0.04] space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Quality Profile */}
-                      <div>
-                        <label className="text-xs text-muted block mb-1">
-                          Qualitätsprofil
-                        </label>
-                        <select
-                          value={selectedProfile}
-                          onChange={(e) =>
-                            setSelectedProfile(Number(e.target.value))
-                          }
-                          className="w-full px-3 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] text-sm focus:outline-none focus:border-accent-cyan/40"
-                        >
-                          {profiles?.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Root Folder */}
-                      <div>
-                        <label className="text-xs text-muted block mb-1">
-                          Stammordner
-                        </label>
-                        <select
-                          value={selectedRoot}
-                          onChange={(e) => setSelectedRoot(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] text-sm focus:outline-none focus:border-accent-cyan/40"
-                        >
-                          {rootFolders?.map((f) => (
-                            <option key={f.id} value={f.path}>
-                              {f.path}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Series Type */}
-                      <div>
-                        <label className="text-xs text-muted block mb-1">
-                          Serientyp
-                        </label>
-                        <select
-                          value={seriesType}
-                          onChange={(e) => setSeriesType(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] text-sm focus:outline-none focus:border-accent-cyan/40"
-                        >
-                          <option value="standard">Standard</option>
-                          <option value="daily">Täglich</option>
-                          <option value="anime">Anime</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Toggles */}
-                    <div className="flex items-center gap-6">
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={seasonFolder}
-                          onChange={(e) => setSeasonFolder(e.target.checked)}
-                          className="h-3.5 w-3.5 rounded border-white/20 bg-white/5 accent-cyan-500"
-                        />
-                        Staffelordner
-                      </label>
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={monitored}
-                          onChange={(e) => setMonitored(e.target.checked)}
-                          className="h-3.5 w-3.5 rounded border-white/20 bg-white/5 accent-cyan-500"
-                        />
-                        Überwacht
-                      </label>
-                    </div>
-
-                    {/* Add button + feedback */}
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => handleAdd(result)}
-                        disabled={addingId === result.tvdbId}
-                        className="px-4 py-1.5 rounded-lg text-xs font-medium bg-accent-cyan/15 text-accent-cyan border border-accent-cyan/30 hover:bg-accent-cyan/25 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-                      >
-                        {addingId === result.tvdbId ? (
-                          <Spinner className="h-3 w-3" />
-                        ) : (
-                          <>
-                            <Plus size={12} /> Hinzufügen
-                          </>
-                        )}
-                      </button>
-
-                      {resultStatus && (
-                        <span
-                          className={`text-xs flex items-center gap-1 ${
-                            resultStatus.success
-                              ? "text-accent-emerald"
-                              : "text-accent-red"
-                          }`}
-                        >
-                          {resultStatus.success ? (
-                            <Check size={12} />
-                          ) : (
-                            <X size={12} />
-                          )}
-                          {resultStatus.message}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Empty state */}
+      {/* Empty search */}
       {!searching && searchTerm.length >= 2 && results.length === 0 && (
         <div className="text-center py-16">
           <Tv size={48} className="mx-auto text-muted mb-4" />
@@ -356,6 +190,292 @@ export default function AddSeriesPage() {
           onSelect={(title) => setSearchTerm(title)}
         />
       )}
+
+      {/* Add Series Modal */}
+      {selected && (
+        <AddSeriesModal
+          series={selected}
+          onClose={() => setSelected(null)}
+          onAdded={(title, success, msg) => {
+            setSelected(null);
+            setFeedback({
+              type: success ? "success" : "error",
+              message: success
+                ? `"${title}" wurde erfolgreich hinzugefügt.`
+                : msg || `Fehler beim Hinzufügen von "${title}".`,
+            });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// --- Add Series Modal ---
+
+function AddSeriesModal({
+  series,
+  onClose,
+  onAdded,
+}: {
+  series: SonarrLookupResult;
+  onClose: () => void;
+  onAdded: (title: string, success: boolean, msg?: string) => void;
+}) {
+  const { data: profiles } = useSonarrProfiles();
+  const { data: rootFolders } = useSonarrRootFolders();
+
+  const [profileId, setProfileId] = useState(0);
+  const [rootPath, setRootPath] = useState("");
+  const [seriesType, setSeriesType] = useState(series.seriesType || "standard");
+  const [seasonFolder, setSeasonFolder] = useState(true);
+  const [monitored, setMonitored] = useState(true);
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    if (profiles?.length && !profileId) setProfileId(profiles[0].id);
+  }, [profiles, profileId]);
+
+  useEffect(() => {
+    if (rootFolders?.length && !rootPath) setRootPath(rootFolders[0].path);
+  }, [rootFolders, rootPath]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const handleAdd = async () => {
+    if (!profileId || !rootPath) return;
+    setAdding(true);
+    try {
+      await addSeries({
+        tvdbId: series.tvdbId,
+        title: series.title,
+        qualityProfileId: profileId,
+        rootFolderPath: rootPath,
+        seriesType,
+        seasonFolder,
+        monitored,
+        images: series.images,
+        seasons: series.seasons.map((s) => ({
+          seasonNumber: s.seasonNumber,
+          monitored,
+        })),
+        addOptions: { searchForMissingEpisodes: monitored },
+      });
+      onAdded(series.title, true);
+    } catch (err) {
+      onAdded(
+        series.title,
+        false,
+        err instanceof Error ? err.message : undefined
+      );
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const poster = series.images.find(
+    (img) => img.coverType === "poster"
+  )?.remoteUrl;
+
+  const selectClass =
+    "w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent-cyan/50 transition-all";
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-card-solid/95 backdrop-blur-2xl shadow-2xl overflow-hidden">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-10 p-2 rounded-lg bg-black/40 hover:bg-black/60 text-white/70 hover:text-white transition-colors"
+        >
+          <X size={16} />
+        </button>
+
+        {/* Header */}
+        <div className="flex gap-4 p-5">
+          <div className="shrink-0 w-28 rounded-xl overflow-hidden border border-white/[0.06] aspect-[2/3] bg-white/[0.02]">
+            {poster ? (
+              <img
+                src={poster}
+                alt={series.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Tv size={32} className="text-muted/30" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0 py-1">
+            <h2 className="text-lg font-semibold leading-tight">
+              {series.title}
+            </h2>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <span className="flex items-center gap-1 text-xs text-muted">
+                <Calendar size={11} />
+                {series.year}
+              </span>
+              {series.runtime > 0 && (
+                <span className="flex items-center gap-1 text-xs text-muted">
+                  <Clock size={11} />
+                  {series.runtime} Min.
+                </span>
+              )}
+              {series.ratings && series.ratings.value > 0 && (
+                <span className="flex items-center gap-1 text-xs text-accent-amber">
+                  <Star size={11} className="fill-accent-amber" />
+                  {series.ratings.value.toFixed(1)}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1 mt-2.5">
+              {series.network && (
+                <Badge variant="info">{series.network}</Badge>
+              )}
+              <Badge
+                variant={
+                  series.status === "continuing" ? "success" : "default"
+                }
+              >
+                {series.status === "continuing" ? "Fortlaufend" : "Beendet"}
+              </Badge>
+              <Badge variant="default">
+                {series.seasons.length} Staffeln
+              </Badge>
+            </div>
+            {series.genres.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {series.genres.slice(0, 4).map((g) => (
+                  <span
+                    key={g}
+                    className="px-1.5 py-0.5 rounded text-[10px] bg-white/[0.04] text-muted"
+                  >
+                    {g}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Overview */}
+        {series.overview && (
+          <div className="px-5 pb-4">
+            <p className="text-xs text-muted leading-relaxed line-clamp-3">
+              {series.overview}
+            </p>
+          </div>
+        )}
+
+        {/* Add options */}
+        <div className="px-5 pb-5 border-t border-white/[0.06] pt-4">
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="text-[10px] text-muted uppercase tracking-wide mb-1 block">
+                Qualitätsprofil
+              </label>
+              <select
+                className={selectClass}
+                value={profileId}
+                onChange={(e) => setProfileId(Number(e.target.value))}
+              >
+                {profiles?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] text-muted uppercase tracking-wide mb-1 block">
+                Stammordner
+              </label>
+              <select
+                className={selectClass}
+                value={rootPath}
+                onChange={(e) => setRootPath(e.target.value)}
+              >
+                {rootFolders?.map((f) => (
+                  <option key={f.id} value={f.path}>
+                    {f.path}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] text-muted uppercase tracking-wide mb-1 block">
+                Serientyp
+              </label>
+              <select
+                className={selectClass}
+                value={seriesType}
+                onChange={(e) => setSeriesType(e.target.value)}
+              >
+                <option value="standard">Standard</option>
+                <option value="daily">Täglich</option>
+                <option value="anime">Anime</option>
+              </select>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-[10px] text-muted uppercase tracking-wide mb-1 block">
+                  Überwacht
+                </label>
+                <button
+                  onClick={() => setMonitored(!monitored)}
+                  className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    monitored
+                      ? "bg-accent-emerald/15 text-accent-emerald border border-accent-emerald/20"
+                      : "bg-white/[0.04] text-muted border border-white/[0.08]"
+                  }`}
+                >
+                  {monitored ? "Ja" : "Nein"}
+                </button>
+              </div>
+              <div className="flex-1">
+                <label className="text-[10px] text-muted uppercase tracking-wide mb-1 block">
+                  Staffelordner
+                </label>
+                <button
+                  onClick={() => setSeasonFolder(!seasonFolder)}
+                  className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    seasonFolder
+                      ? "bg-accent-emerald/15 text-accent-emerald border border-accent-emerald/20"
+                      : "bg-white/[0.04] text-muted border border-white/[0.08]"
+                  }`}
+                >
+                  {seasonFolder ? "Ja" : "Nein"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleAdd}
+            disabled={adding || !profileId || !rootPath}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent-cyan text-background text-sm font-semibold hover:bg-accent-cyan/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {adding ? (
+              <Spinner className="h-4 w-4" />
+            ) : (
+              <Plus size={16} />
+            )}
+            {adding ? "Wird hinzugefügt..." : "Serie hinzufügen & suchen"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
