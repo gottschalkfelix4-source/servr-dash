@@ -28,6 +28,7 @@ import {
   deleteMovie,
 } from "@/hooks/useRadarr";
 import { ReleasesPanel } from "@/components/radarr/ReleasesPanel";
+import { EditMoviePanel } from "@/components/radarr/EditMoviePanel";
 
 export default function MovieDetailPage({
   params,
@@ -126,6 +127,7 @@ export default function MovieDetailPage({
             >
               <ArrowLeft size={16} />
             </Link>
+            <EditMoviePanel movie={movie} onSaved={() => mutateMovie()} />
             <button
               onClick={handleSearch}
               disabled={acting}

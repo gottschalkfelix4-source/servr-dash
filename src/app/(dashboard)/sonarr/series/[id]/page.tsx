@@ -22,6 +22,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Spinner } from "@/components/ui/Spinner";
 import { SeasonPanel } from "@/components/sonarr/SeasonPanel";
 import { ReleasesPanel } from "@/components/sonarr/ReleasesPanel";
+import { EditSeriesPanel } from "@/components/sonarr/EditSeriesPanel";
 import { formatBytes } from "@/lib/utils";
 import {
   useSonarrSerie,
@@ -159,6 +160,7 @@ export default function SeriesDetailPage({
                 </span>
               )}
             </button>
+            <EditSeriesPanel series={series} onSaved={() => mutateSeries()} />
             <button
               onClick={() => setShowDeleteConfirm(true)}
               className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent-red/15 text-accent-red border border-accent-red/30 hover:bg-accent-red/25 transition-colors"
