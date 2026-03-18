@@ -83,4 +83,6 @@ export interface AppConfig {
   };
   radarr?: ArrConfig;
   sonarr?: ArrConfig;
+  tmdbApiKey?: string;
+  [key: string]: unknown;
 }

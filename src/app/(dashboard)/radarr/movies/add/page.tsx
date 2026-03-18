@@ -13,6 +13,7 @@ import {
   addMovie,
 } from "@/hooks/useRadarr";
 import type { RadarrLookupResult } from "@/types/radarr";
+import { TrendingGrid } from "@/components/ui/TrendingGrid";
 
 export default function AddMoviePage() {
   const [search, setSearch] = useState("");
@@ -289,6 +290,14 @@ export default function AddMoviePage() {
             Keine Ergebnisse f\ür &ldquo;{search}&rdquo;
           </p>
         </div>
+      )}
+
+      {/* Trending suggestions when no search */}
+      {!search && results.length === 0 && !searching && (
+        <TrendingGrid
+          type="movie"
+          onSelect={(title) => handleSearchChange(title)}
+        />
       )}
     </div>
   );

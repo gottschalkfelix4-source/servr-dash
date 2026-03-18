@@ -13,6 +13,7 @@ import {
   addSeries,
 } from "@/hooks/useSonarr";
 import type { SonarrLookupResult } from "@/types/sonarr";
+import { TrendingGrid } from "@/components/ui/TrendingGrid";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -348,13 +349,12 @@ export default function AddSeriesPage() {
         </div>
       )}
 
+      {/* Trending suggestions when no search */}
       {!searching && searchTerm.length < 2 && (
-        <div className="text-center py-16">
-          <Search size={48} className="mx-auto text-muted mb-4" />
-          <p className="text-sm text-muted">
-            Gib einen Suchbegriff ein, um Serien zu finden
-          </p>
-        </div>
+        <TrendingGrid
+          type="tv"
+          onSelect={(title) => setSearchTerm(title)}
+        />
       )}
     </div>
   );

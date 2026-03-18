@@ -21,6 +21,7 @@ import {
   Users,
   UserPlus,
   Shield,
+  TrendingUp,
 } from "lucide-react";
 import type { ServerConfig, AppConfig } from "@/types/server";
 import type { SafeUser } from "@/types/auth";
@@ -49,6 +50,7 @@ export default function SettingsPage() {
           defaultPort={8989}
           statusEndpoint="/api/sonarr/status"
         />
+        <TmdbSettings />
         <UserManagement />
       </div>
     </div>
@@ -917,6 +919,106 @@ function UserManagement() {
           </div>
         ))}
       </div>
+    </Card>
+  );
+}
+
+// --- TMDB Settings ---
+
+function TmdbSettings() {
+  const [config, setConfig] = useState<AppConfig | null>(null);
+  const [apiKey, setApiKey] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<"untested" | "ok" | "error">("untested");
+
+  const loadConfig = useCallback(async () => {
+    const res = await fetch("/api/config");
+    const data = await res.json();
+    setConfig(data);
+    setApiKey((data as Record<string, unknown>).tmdbApiKey as string || "");
+  }, []);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  const handleSave = async () => {
+    if (!config) return;
+    setSaving(true);
+    try {
+      const newConfig = { ...config, tmdbApiKey: apiKey };
+      await fetch("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newConfig),
+      });
+      setConfig(newConfig as AppConfig);
+
+      // Test the key
+      if (apiKey) {
+        const res = await fetch("/api/tmdb?type=movie&category=trending");
+        setStatus(res.ok ? "ok" : "error");
+      } else {
+        setStatus("untested");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputClass =
+    "w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent-cyan/50 focus:shadow-[0_0_15px_-5px_rgba(34,211,238,0.3)] transition-all duration-200";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>TMDB (Vorschläge)</CardTitle>
+        <TrendingUp size={16} className="text-accent-emerald" />
+      </CardHeader>
+
+      <p className="text-xs text-muted mb-4">
+        Für Trending-Vorschläge beim Hinzufügen von Filmen/Serien. API Key von{" "}
+        <a
+          href="https://www.themoviedb.org/settings/api"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent-cyan hover:underline"
+        >
+          themoviedb.org
+        </a>{" "}
+        (kostenlos).
+      </p>
+
+      <div className="flex gap-3 items-end">
+        <div className="flex-1">
+          <label className="text-xs text-muted mb-1 block">API Read Access Token</label>
+          <input
+            className={inputClass}
+            type="password"
+            placeholder="eyJhbGciOi..."
+            value={apiKey}
+            onChange={(e) => {
+              setApiKey(e.target.value);
+              setStatus("untested");
+            }}
+          />
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-cyan text-background text-sm font-medium hover:bg-accent-cyan/90 transition-colors disabled:opacity-50"
+        >
+          <Save size={14} />
+          {saving ? "..." : "Speichern"}
+        </button>
+      </div>
+
+      {status === "ok" && (
+        <p className="text-xs text-accent-emerald mt-2">✓ Verbindung erfolgreich</p>
+      )}
+      {status === "error" && (
+        <p className="text-xs text-accent-red mt-2">✗ API Key ungültig</p>
+      )}
     </Card>
   );
 }
