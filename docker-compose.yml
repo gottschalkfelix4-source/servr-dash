@@ -10,6 +10,7 @@ services:
       - ~/.ssh:/home/nextjs/.ssh:ro
     environment:
       # REQUIRED: Change this to a random secret for JWT auth
+      - PORT=3060
       - AUTH_SECRET=change-me-to-a-random-secret-string
       # Optional: Set timezone for correct calendar/schedule display
       - TZ=Europe/Berlin
