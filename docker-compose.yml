@@ -1,0 +1,11 @@
+services:
+  servr-dash:
+    build: .
+    container_name: servr-dash
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config:/app/config
+    env_file:
+      - .env.local
+    restart: unless-stopped
