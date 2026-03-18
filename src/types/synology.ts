@@ -2,6 +2,7 @@ export interface SynologyConfig {
   url: string;
   username: string;
   password: string;
+  deviceId?: string; // 2FA device token — saved after first OTP login
 }
 
 export interface SynologySession {

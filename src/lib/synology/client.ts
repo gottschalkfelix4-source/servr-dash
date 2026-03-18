@@ -1,4 +1,4 @@
-import { getConfig } from "@/lib/config";
+import { getConfig, saveConfig } from "@/lib/config";
 import type {
   SynologyConfig,
   SynologySession,
@@ -18,6 +18,14 @@ function getSynologyConfig(): SynologyConfig | null {
   return syn;
 }
 
+// Custom error for 2FA requirement
+export class TwoFactorRequiredError extends Error {
+  constructor() {
+    super("2FA_REQUIRED");
+    this.name = "TwoFactorRequiredError";
+  }
+}
+
 class SynologyABBClient {
   private async getSession(): Promise<string> {
     const cfg = getSynologyConfig();
@@ -28,14 +36,20 @@ class SynologyABBClient {
       return cachedSession.sid;
     }
 
+    // Build login params
     const params = new URLSearchParams({
       api: "SYNO.API.Auth",
-      version: "3",
+      version: "6",
       method: "login",
       account: cfg.username,
       passwd: cfg.password,
       format: "sid",
     });
+
+    // If we have a saved device_id, use it to bypass 2FA
+    if (cfg.deviceId) {
+      params.set("device_id", cfg.deviceId);
+    }
 
     const res = await fetch(`${cfg.url}/webapi/auth.cgi?${params}`, {
       cache: "no-store",
@@ -44,9 +58,22 @@ class SynologyABBClient {
     if (!res.ok) throw new Error(`Synology Auth HTTP ${res.status}`);
 
     const data = await res.json();
+
     if (!data.success) {
+      const code = data.error?.code;
+
+      // 403 = 2FA code required, 406 = enforce 2FA
+      if (code === 403 || code === 406) {
+        throw new TwoFactorRequiredError();
+      }
+
+      // 404 = wrong OTP code
+      if (code === 404) {
+        throw new Error("OTP Code ungültig");
+      }
+
       throw new Error(
-        `Synology Auth fehlgeschlagen: Code ${data.error?.code || "unbekannt"}`
+        `Synology Auth fehlgeschlagen: Code ${code || "unbekannt"}`
       );
     }
 
@@ -55,7 +82,78 @@ class SynologyABBClient {
       expiresAt: Date.now() + 6 * 24 * 60 * 60 * 1000, // 6 days
     };
 
+    // If we got a new device_id, save it
+    if (data.data.device_id && data.data.device_id !== cfg.deviceId) {
+      this.saveDeviceId(data.data.device_id);
+    }
+    if (data.data.did && !cfg.deviceId) {
+      this.saveDeviceId(data.data.did);
+    }
+
     return cachedSession.sid;
+  }
+
+  // Login with OTP code — called once, saves device_id for future logins
+  async loginWithOtp(otpCode: string): Promise<{ success: boolean; error?: string }> {
+    const cfg = getSynologyConfig();
+    if (!cfg) return { success: false, error: "Synology nicht konfiguriert" };
+
+    const params = new URLSearchParams({
+      api: "SYNO.API.Auth",
+      version: "6",
+      method: "login",
+      account: cfg.username,
+      passwd: cfg.password,
+      otp_code: otpCode,
+      enable_device_token: "yes",
+      device_name: "Servr Dash",
+      format: "sid",
+    });
+
+    try {
+      const res = await fetch(`${cfg.url}/webapi/auth.cgi?${params}`, {
+        cache: "no-store",
+      });
+
+      if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
+
+      const data = await res.json();
+
+      if (!data.success) {
+        const code = data.error?.code;
+        if (code === 404) {
+          return { success: false, error: "OTP Code ungültig" };
+        }
+        return { success: false, error: `Fehler Code ${code}` };
+      }
+
+      // Save session
+      cachedSession = {
+        sid: data.data.sid,
+        expiresAt: Date.now() + 6 * 24 * 60 * 60 * 1000,
+      };
+
+      // Save device_id so future logins skip 2FA
+      const deviceId = data.data.device_id || data.data.did;
+      if (deviceId) {
+        this.saveDeviceId(deviceId);
+      }
+
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Unbekannter Fehler",
+      };
+    }
+  }
+
+  private saveDeviceId(deviceId: string) {
+    const config = getConfig();
+    if (config.synology) {
+      (config.synology as SynologyConfig).deviceId = deviceId;
+      saveConfig(config);
+    }
   }
 
   private async apiCall<T>(
@@ -119,7 +217,12 @@ class SynologyABBClient {
 
   // --- Public API ---
 
-  async testConnection(): Promise<{ success: boolean; version?: string }> {
+  async testConnection(): Promise<{
+    success: boolean;
+    needs2fa?: boolean;
+    has2fa?: boolean;
+    version?: string;
+  }> {
     try {
       const cfg = getSynologyConfig();
       if (!cfg) return { success: false };
@@ -133,8 +236,11 @@ class SynologyABBClient {
         // ABB might not be installed
       }
 
-      return { success: true };
-    } catch {
+      return { success: true, has2fa: !!cfg.deviceId };
+    } catch (err) {
+      if (err instanceof TwoFactorRequiredError) {
+        return { success: false, needs2fa: true };
+      }
       return { success: false };
     }
   }
@@ -203,7 +309,9 @@ class SynologyABBClient {
     const now = Date.now() / 1000;
     const last24h = now - 86400;
 
-    const onlineDevices = devices.filter((d) => d.status === 1 || d.status === 2);
+    const onlineDevices = devices.filter(
+      (d) => d.status === 1 || d.status === 2
+    );
     const recentLogs = logs.filter((l) => l.time_end > last24h);
 
     const successCount = recentLogs.filter((l) => l.status === 1).length;
@@ -220,7 +328,8 @@ class SynologyABBClient {
       online_devices: onlineDevices.length,
       offline_devices: devices.length - onlineDevices.length,
       total_tasks: tasks.length,
-      active_tasks: tasks.filter((t) => t.status === 1 || t.status === 2).length,
+      active_tasks: tasks.filter((t) => t.status === 1 || t.status === 2)
+        .length,
       success_count: successCount,
       warning_count: warningCount,
       error_count: errorCount,

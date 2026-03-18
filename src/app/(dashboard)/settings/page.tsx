@@ -932,7 +932,10 @@ function SynologySettings() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<"untested" | "ok" | "error">("untested");
+  const [status, setStatus] = useState<"untested" | "ok" | "error" | "needs2fa">("untested");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
 
   const loadConfig = useCallback(async () => {
     const res = await fetch("/api/config");
@@ -950,25 +953,44 @@ function SynologySettings() {
     loadConfig();
   }, [loadConfig]);
 
-  useEffect(() => {
+  const checkStatus = useCallback(async () => {
     if (!url || !username || !password) {
       setStatus("untested");
       return;
     }
-    // Check connection on load if configured
-    fetch("/api/synology/status")
-      .then((r) => r.ok ? r.json() : Promise.reject())
-      .then((data) => setStatus(data.success ? "ok" : "error"))
-      .catch(() => setStatus("error"));
+    try {
+      const res = await fetch("/api/synology/status");
+      const data = await res.json();
+      if (data.success) {
+        setStatus("ok");
+      } else if (data.needs2fa) {
+        setStatus("needs2fa");
+      } else {
+        setStatus("error");
+      }
+    } catch {
+      setStatus("error");
+    }
   }, [url, username, password]);
+
+  useEffect(() => {
+    checkStatus();
+  }, [checkStatus]);
 
   const handleSave = async () => {
     if (!config) return;
     setSaving(true);
     try {
+      const existing = config.synology as Record<string, unknown> | undefined;
       const newConfig = {
         ...config,
-        synology: { url: url.replace(/\/$/, ""), username, password },
+        synology: {
+          url: url.replace(/\/$/, ""),
+          username,
+          password,
+          // Preserve deviceId if it exists
+          ...(existing?.deviceId ? { deviceId: existing.deviceId } : {}),
+        },
       };
       await fetch("/api/config", {
         method: "PUT",
@@ -976,18 +998,34 @@ function SynologySettings() {
         body: JSON.stringify(newConfig),
       });
       setConfig(newConfig as AppConfig);
-      // Test connection
-      setTimeout(async () => {
-        try {
-          const res = await fetch("/api/synology/status");
-          const data = await res.json();
-          setStatus(data.success ? "ok" : "error");
-        } catch {
-          setStatus("error");
-        }
-      }, 500);
+      setTimeout(checkStatus, 500);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    if (!otpCode.trim()) return;
+    setOtpSubmitting(true);
+    setOtpError(null);
+    try {
+      const res = await fetch("/api/synology/otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otpCode: otpCode.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setStatus("ok");
+        setOtpCode("");
+        loadConfig(); // Reload to get saved deviceId
+      } else {
+        setOtpError(data.error || "OTP Code ungültig");
+      }
+    } catch {
+      setOtpError("Verbindungsfehler");
+    } finally {
+      setOtpSubmitting(false);
     }
   };
 
@@ -1039,6 +1077,48 @@ function SynologySettings() {
             <LogOut size={14} />
             Trennen
           </button>
+        </div>
+      )}
+
+      {/* 2FA OTP Input */}
+      {status === "needs2fa" && (
+        <div className="p-4 rounded-lg border border-accent-amber/20 bg-accent-amber/5 mb-4">
+          <p className="text-sm font-medium text-accent-amber mb-1">
+            Zwei-Faktor-Authentifizierung erforderlich
+          </p>
+          <p className="text-xs text-muted mb-3">
+            Gib den 6-stelligen Code aus deiner Authenticator-App ein. Nach der
+            ersten Verifizierung wird dieses Gerät als vertrauenswürdig
+            gespeichert.
+          </p>
+          <div className="flex gap-2">
+            <input
+              className={inputClass + " max-w-[200px] text-center tracking-[0.3em] font-mono"}
+              placeholder="000000"
+              value={otpCode}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                setOtpCode(val);
+                setOtpError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && otpCode.length === 6) handleOtpSubmit();
+              }}
+              maxLength={6}
+              autoFocus
+            />
+            <button
+              onClick={handleOtpSubmit}
+              disabled={otpSubmitting || otpCode.length !== 6}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-cyan text-background text-sm font-medium hover:bg-accent-cyan/90 transition-colors disabled:opacity-50"
+            >
+              {otpSubmitting ? <Spinner /> : <Save size={14} />}
+              Bestätigen
+            </button>
+          </div>
+          {otpError && (
+            <p className="text-xs text-accent-red mt-2">{otpError}</p>
+          )}
         </div>
       )}
 
