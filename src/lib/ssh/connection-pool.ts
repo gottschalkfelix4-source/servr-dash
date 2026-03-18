@@ -100,6 +100,30 @@ class SSHConnectionPool {
         readyTimeout: 10000,
         keepaliveInterval: 10000,
         keepaliveCountMax: 3,
+        // Accept any host key (needed inside Docker where there's no known_hosts)
+        hostVerifier: () => true,
+        // Support older SSH server algorithms
+        algorithms: {
+          kex: [
+            "ecdh-sha2-nistp256",
+            "ecdh-sha2-nistp384",
+            "ecdh-sha2-nistp521",
+            "diffie-hellman-group-exchange-sha256",
+            "diffie-hellman-group14-sha256",
+            "diffie-hellman-group14-sha1",
+            "curve25519-sha256",
+            "curve25519-sha256@libssh.org",
+          ],
+          serverHostKey: [
+            "ssh-rsa",
+            "ssh-ed25519",
+            "ecdsa-sha2-nistp256",
+            "ecdsa-sha2-nistp384",
+            "ecdsa-sha2-nistp521",
+            "rsa-sha2-256",
+            "rsa-sha2-512",
+          ],
+        },
       };
 
       if (server.authMethod === "key" && server.privateKeyPath) {
