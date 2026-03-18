@@ -46,9 +46,9 @@ export function TopBar() {
   };
 
   return (
-    <header className="h-16 border-b border-white/[0.06] bg-card-solid/40 backdrop-blur-xl flex items-center justify-between px-6">
-      <div className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold">{title}</h1>
+    <header className="h-14 sm:h-16 border-b border-white/[0.06] bg-card-solid/40 backdrop-blur-xl flex items-center justify-between px-3 sm:px-6">
+      <div className="flex items-center gap-3 pl-10 lg:pl-0">
+        <h1 className="text-base sm:text-lg font-semibold truncate">{title}</h1>
       </div>
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 text-xs text-muted">

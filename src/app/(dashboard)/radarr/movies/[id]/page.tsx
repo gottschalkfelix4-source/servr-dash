@@ -166,9 +166,9 @@ export default function MovieDetailPage({
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 sm:gap-6">
         {/* Poster */}
-        <div className="rounded-xl overflow-hidden border border-border bg-card">
+        <div className="rounded-xl overflow-hidden border border-border bg-card mx-auto w-48 sm:w-full lg:mx-0">
           {posterUrl ? (
             <img
               src={posterUrl}

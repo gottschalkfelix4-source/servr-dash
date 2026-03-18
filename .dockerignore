@@ -2,5 +2,10 @@ node_modules
 .next
 .git
 .env.local
+.env
 *.md
 .gitignore
+.claude
+config/servers.json
+config/users.json
+scripts

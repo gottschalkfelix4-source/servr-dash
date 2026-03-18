@@ -99,8 +99,9 @@ export function Sidebar() {
 
       {/* Mobile hamburger */}
       <button
-        className="fixed top-4 left-4 z-50 lg:hidden rounded-lg glass p-2"
+        className="fixed top-3 left-3 z-50 lg:hidden rounded-lg glass p-2.5"
         onClick={() => setMobileOpen(!mobileOpen)}
+        aria-label="Menü öffnen"
       >
         <LayoutDashboard size={20} />
       </button>

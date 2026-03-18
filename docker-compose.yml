@@ -5,7 +5,16 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./config:/app/config
-    env_file:
-      - .env.local
+      # Persistent config (servers, users, plex token, radarr/sonarr settings)
+      - servr-config:/app/config
+      # SSH keys for server connections (mount your .ssh folder read-only)
+      - ~/.ssh:/home/nextjs/.ssh:ro
+    environment:
+      # REQUIRED: Change this to a random secret for JWT auth
+      - AUTH_SECRET=change-me-to-a-random-secret-string
+      # Optional: Set timezone for correct calendar/schedule display
+      - TZ=Europe/Berlin
     restart: unless-stopped
+
+volumes:
+  servr-config:
