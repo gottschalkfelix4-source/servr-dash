@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
-import { ENCODED_KEY } from "@/lib/auth/jwt";
+import { getJwtKey } from "@/lib/auth/jwt";
 
 const COOKIE_NAME = "servr-auth";
 
@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    await jwtVerify(token, ENCODED_KEY);
+    await jwtVerify(token, getJwtKey());
     return NextResponse.next();
   } catch {
     if (pathname.startsWith("/api/")) {
