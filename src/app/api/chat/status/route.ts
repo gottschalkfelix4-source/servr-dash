@@ -6,36 +6,64 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const config = getConfig();
   const openclaw = config.openclaw;
+  const logs: string[] = [];
+
+  const log = (msg: string) => {
+    const ts = new Date().toLocaleTimeString("de-DE");
+    logs.push(`[${ts}] ${msg}`);
+  };
 
   if (!openclaw?.url) {
-    return NextResponse.json({ configured: false, online: false });
+    log("Keine Gateway URL konfiguriert");
+    return NextResponse.json({ configured: false, online: false, logs });
   }
 
+  log(`Gateway URL: ${openclaw.url}`);
+  log(`Auth: ${openclaw.authMethod || "none"}`);
+  if (openclaw.password) log("Passwort: gesetzt");
+  if (openclaw.model) log(`Modell: ${openclaw.model}`);
+
+  const headers: Record<string, string> = {};
+  if (openclaw.authMethod === "token" && openclaw.token) {
+    headers["Authorization"] = `Bearer ${openclaw.token}`;
+    log("Auth Header: Bearer Token");
+  } else if (openclaw.authMethod === "password" && openclaw.password) {
+    headers["Authorization"] = `Bearer ${openclaw.password}`;
+    log("Auth Header: Bearer Password");
+  } else {
+    log("Auth Header: keiner (keine Auth)");
+  }
+
+  const baseUrl = openclaw.url.replace(/\/$/, "");
+
+  // Step 1: Try /v1/models
   try {
-    const headers: Record<string, string> = {};
-    if (openclaw.authMethod === "token" && openclaw.token) {
-      headers["Authorization"] = `Bearer ${openclaw.token}`;
-    } else if (openclaw.authMethod === "password" && openclaw.password) {
-      headers["Authorization"] = `Bearer ${openclaw.password}`;
-    }
-
-    // Try a simple completions call to verify connection
-    // /v1/models may not be available on all OpenClaw setups
-    const baseUrl = openclaw.url.replace(/\/$/, "");
-
-    // Try /v1/models first
+    log(`Teste: GET ${baseUrl}/v1/models ...`);
     const modelsRes = await fetch(`${baseUrl}/v1/models`, {
       headers,
       signal: AbortSignal.timeout(5000),
-    }).catch(() => null);
+    });
 
-    if (modelsRes?.ok) {
+    log(`/v1/models → Status ${modelsRes.status} ${modelsRes.statusText}`);
+
+    if (modelsRes.ok) {
       const data = await modelsRes.json();
       const models = data.data?.map((m: { id: string }) => m.id) || [];
-      return NextResponse.json({ configured: true, online: true, models });
+      log(`Modelle gefunden: ${models.join(", ") || "keine"}`);
+      log("Verbindung erfolgreich!");
+      return NextResponse.json({ configured: true, online: true, models, logs });
     }
 
-    // Fallback: try a minimal chat completions request
+    const errText = await modelsRes.text().catch(() => "");
+    if (errText) log(`Response: ${errText.substring(0, 200)}`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log(`/v1/models Fehler: ${msg}`);
+  }
+
+  // Step 2: Try /v1/chat/completions with minimal request
+  try {
+    log(`Teste: POST ${baseUrl}/v1/chat/completions ...`);
     const chatRes = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: "POST",
       headers: { ...headers, "Content-Type": "application/json" },
@@ -45,14 +73,49 @@ export async function GET() {
         max_tokens: 1,
       }),
       signal: AbortSignal.timeout(10000),
-    }).catch(() => null);
+    });
 
-    if (chatRes?.ok || chatRes?.status === 200) {
-      return NextResponse.json({ configured: true, online: true, models: ["openclaw"] });
+    log(`/v1/chat/completions → Status ${chatRes.status} ${chatRes.statusText}`);
+
+    if (chatRes.ok) {
+      log("Chat-Endpoint erreichbar! Verbindung erfolgreich.");
+      return NextResponse.json({
+        configured: true,
+        online: true,
+        models: [openclaw.model || "openclaw"],
+        logs,
+      });
     }
 
-    return NextResponse.json({ configured: true, online: false });
-  } catch {
-    return NextResponse.json({ configured: true, online: false });
+    const errText = await chatRes.text().catch(() => "");
+    if (errText) log(`Response: ${errText.substring(0, 300)}`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log(`/v1/chat/completions Fehler: ${msg}`);
   }
+
+  // Step 3: Try raw TCP connectivity (just fetch the base URL)
+  try {
+    log(`Teste: GET ${baseUrl}/ ...`);
+    const rootRes = await fetch(`${baseUrl}/`, {
+      headers,
+      signal: AbortSignal.timeout(3000),
+    });
+    log(`Root → Status ${rootRes.status} ${rootRes.statusText}`);
+    const body = await rootRes.text().catch(() => "");
+    if (body) log(`Root Response: ${body.substring(0, 200)}`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log(`Root Fehler: ${msg}`);
+    if (msg.includes("ECONNREFUSED")) {
+      log("→ Server läuft nicht oder Port ist falsch");
+    } else if (msg.includes("ETIMEDOUT") || msg.includes("timeout")) {
+      log("→ Server nicht erreichbar (Firewall? Falsches Netzwerk?)");
+    } else if (msg.includes("ENOTFOUND")) {
+      log("→ Hostname nicht auflösbar (DNS-Problem)");
+    }
+  }
+
+  log("Verbindung fehlgeschlagen.");
+  return NextResponse.json({ configured: true, online: false, logs });
 }

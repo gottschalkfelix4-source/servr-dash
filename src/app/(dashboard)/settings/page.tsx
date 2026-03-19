@@ -1382,6 +1382,8 @@ function OpenClawSettings() {
     online: boolean;
     models?: string[];
   } | null>(null);
+  const [diagLogs, setDiagLogs] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
 
   const loadConfig = useCallback(async () => {
     const res = await fetch("/api/config");
@@ -1401,14 +1403,19 @@ function OpenClawSettings() {
 
   const checkStatus = useCallback(async () => {
     setTesting(true);
+    setShowLogs(true);
     try {
       const res = await fetch("/api/chat/status");
       const data = await res.json();
       if (data.configured) {
         setStatus({ online: data.online, models: data.models });
       }
-    } catch {
+      if (data.logs) {
+        setDiagLogs(data.logs);
+      }
+    } catch (err) {
       setStatus({ online: false });
+      setDiagLogs([`Fehler: ${err instanceof Error ? err.message : "Unbekannt"}`]);
     } finally {
       setTesting(false);
     }
@@ -1578,8 +1585,41 @@ function OpenClawSettings() {
       {/* Status feedback */}
       {url && status && !status.online && !testing && (
         <p className="text-xs text-accent-red mt-3">
-          Gateway nicht erreichbar. Pr&uuml;fe URL und Passwort.
+          Gateway nicht erreichbar. Klicke &quot;Verbindung testen&quot; f&uuml;r Details.
         </p>
+      )}
+
+      {/* Diagnostic Logs */}
+      {showLogs && diagLogs.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-muted">Verbindungs-Log</span>
+            <button
+              onClick={() => { setShowLogs(false); setDiagLogs([]); }}
+              className="text-xs text-muted hover:text-foreground transition-colors"
+            >
+              Schlie&szlig;en
+            </button>
+          </div>
+          <div className="rounded-lg bg-black/40 border border-white/[0.06] p-3 max-h-48 overflow-y-auto font-mono text-xs space-y-0.5">
+            {diagLogs.map((line, i) => (
+              <div
+                key={i}
+                className={
+                  line.includes("erfolgreich") || line.includes("Verbindung erfolgreich")
+                    ? "text-accent-emerald"
+                    : line.includes("Fehler") || line.includes("fehlgeschlagen")
+                    ? "text-accent-red"
+                    : line.includes("Teste:")
+                    ? "text-accent-cyan"
+                    : "text-muted"
+                }
+              >
+                {line}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </Card>
   );
