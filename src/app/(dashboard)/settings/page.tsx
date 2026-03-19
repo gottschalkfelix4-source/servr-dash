@@ -1523,8 +1523,8 @@ function OpenClawSettings() {
             onChange={(e) => setAuthMethod(e.target.value as "none" | "token" | "password")}
           >
             <option value="none">Keine</option>
-            <option value="token">API Token (Bearer)</option>
-            <option value="password">Benutzername & Passwort (Basic)</option>
+            <option value="token">Token (Bearer)</option>
+            <option value="password">Passwort (OPENCLAW_GATEWAY_PASSWORD)</option>
           </select>
         </div>
       </div>
@@ -1565,7 +1565,7 @@ function OpenClawSettings() {
         </label>
         <input
           className={inputClass}
-          placeholder="default"
+          placeholder="openclaw"
           value={model}
           onChange={(e) => setModel(e.target.value)}
         />
