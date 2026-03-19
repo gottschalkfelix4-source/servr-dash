@@ -61,40 +61,7 @@ export async function GET() {
     log(`/v1/models Fehler: ${msg}`);
   }
 
-  // Step 2: Try /v1/chat/completions with minimal request
-  try {
-    log(`Teste: POST ${baseUrl}/v1/chat/completions ...`);
-    const chatRes = await fetch(`${baseUrl}/v1/chat/completions`, {
-      method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: openclaw.model || "openclaw",
-        messages: [{ role: "user", content: "ping" }],
-        max_tokens: 1,
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-
-    log(`/v1/chat/completions → Status ${chatRes.status} ${chatRes.statusText}`);
-
-    if (chatRes.ok) {
-      log("Chat-Endpoint erreichbar! Verbindung erfolgreich.");
-      return NextResponse.json({
-        configured: true,
-        online: true,
-        models: [openclaw.model || "openclaw"],
-        logs,
-      });
-    }
-
-    const errText = await chatRes.text().catch(() => "");
-    if (errText) log(`Response: ${errText.substring(0, 300)}`);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    log(`/v1/chat/completions Fehler: ${msg}`);
-  }
-
-  // Step 3: Try raw TCP connectivity (just fetch the base URL)
+  // Step 2: Try raw connectivity (just fetch the base URL, no chat created)
   try {
     log(`Teste: GET ${baseUrl}/ ...`);
     const rootRes = await fetch(`${baseUrl}/`, {
