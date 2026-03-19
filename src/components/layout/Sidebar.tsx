@@ -24,6 +24,7 @@ import {
   ListChecks,
   ScrollText,
   Globe,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -94,6 +95,11 @@ const navItems: NavItem[] = [
     label: "DNS",
     href: "/dns",
     icon: <Globe size={20} />,
+  },
+  {
+    label: "AI Chat",
+    href: "/chat",
+    icon: <MessageSquare size={20} />,
   },
   {
     label: "Einstellungen",

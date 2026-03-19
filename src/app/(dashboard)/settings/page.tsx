@@ -23,6 +23,7 @@ import {
   Shield,
   TrendingUp,
   Globe,
+  MessageSquare,
 } from "lucide-react";
 import type { ServerConfig, AppConfig } from "@/types/server";
 import type { SafeUser } from "@/types/auth";
@@ -54,6 +55,7 @@ export default function SettingsPage() {
         <CloudflareSettings />
         <SynologySettings />
         <TmdbSettings />
+        <OpenClawSettings />
         <UserManagement />
       </div>
     </div>
@@ -1363,6 +1365,188 @@ function TmdbSettings() {
       {status === "error" && (
         <p className="text-xs text-accent-red mt-2">✗ API Key ungültig</p>
       )}
+    </Card>
+  );
+}
+
+// --- OpenClaw Settings ---
+
+function OpenClawSettings() {
+  const [config, setConfig] = useState<AppConfig | null>(null);
+  const [url, setUrl] = useState("");
+  const [token, setToken] = useState("");
+  const [model, setModel] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{
+    online: boolean;
+    models?: string[];
+  } | null>(null);
+
+  const loadConfig = useCallback(async () => {
+    const res = await fetch("/api/config");
+    const data = await res.json();
+    setConfig(data);
+    const oc = data.openclaw;
+    if (oc) {
+      setUrl(oc.url || "");
+      setToken(oc.token || "");
+      setModel(oc.model || "");
+    }
+  }, []);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  const checkStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/chat/status");
+      const data = await res.json();
+      if (data.configured) {
+        setStatus({ online: data.online, models: data.models });
+      }
+    } catch {
+      setStatus(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (url) checkStatus();
+  }, [url, checkStatus]);
+
+  const handleSave = async () => {
+    if (!config) return;
+    setSaving(true);
+    try {
+      const newConfig = {
+        ...config,
+        openclaw: {
+          url: url.replace(/\/$/, ""),
+          ...(token ? { token } : {}),
+          ...(model ? { model } : {}),
+        },
+      };
+      await fetch("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newConfig),
+      });
+      setConfig(newConfig as AppConfig);
+      setTimeout(checkStatus, 500);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!config || !confirm("OpenClaw Verbindung wirklich entfernen?")) return;
+    setSaving(true);
+    try {
+      const newConfig = { ...config };
+      delete newConfig.openclaw;
+      await fetch("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newConfig),
+      });
+      setConfig(newConfig as AppConfig);
+      setUrl("");
+      setToken("");
+      setModel("");
+      setStatus(null);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputClass =
+    "w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent-cyan/50 focus:shadow-[0_0_15px_-5px_rgba(34,211,238,0.3)] transition-all duration-200";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>OpenClaw Gateway (AI Chat)</CardTitle>
+        <MessageSquare size={16} className="text-accent-purple" />
+      </CardHeader>
+
+      <p className="text-xs text-muted mb-4">
+        Verbinde dich mit einem OpenClaw Gateway oder jedem OpenAI-kompatiblen
+        Endpoint für den integrierten AI Chat.
+      </p>
+
+      {status?.online && (
+        <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] mb-4">
+          <div className="flex items-center gap-3">
+            <StatusDot status="online" />
+            <div>
+              <span className="font-medium text-sm">Gateway verbunden</span>
+              {status.models && status.models.length > 0 && (
+                <span className="text-xs text-muted ml-2">
+                  {status.models.length} Modell{status.models.length !== 1 ? "e" : ""}
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={handleRemove}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-accent-red hover:bg-accent-red/10 transition-colors"
+          >
+            <LogOut size={14} />
+            Trennen
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div>
+          <label className="text-xs text-muted mb-1 block">Gateway URL</label>
+          <input
+            className={inputClass}
+            placeholder="http://localhost:18789"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-muted mb-1 block">
+            Token{" "}
+            <span className="text-muted/50">(optional)</span>
+          </label>
+          <input
+            className={inputClass}
+            type="password"
+            placeholder="Bearer Token"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-muted mb-1 block">
+            Modell{" "}
+            <span className="text-muted/50">(optional)</span>
+          </label>
+          <input
+            className={inputClass}
+            placeholder="default"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSave}
+          disabled={saving || !url}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-cyan text-background text-sm font-medium hover:bg-accent-cyan/90 transition-colors disabled:opacity-50"
+        >
+          <Save size={14} />
+          {saving ? "Speichern..." : "Speichern"}
+        </button>
+        {url && status && !status.online && (
+          <Badge variant="danger">Nicht erreichbar</Badge>
+        )}
+      </div>
     </Card>
   );
 }
