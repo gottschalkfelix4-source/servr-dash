@@ -1374,11 +1374,10 @@ function TmdbSettings() {
 function OpenClawSettings() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [url, setUrl] = useState("");
-  const [authMethod, setAuthMethod] = useState<"none" | "token" | "password">("none");
-  const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
   const [model, setModel] = useState("");
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState<{
     online: boolean;
     models?: string[];
@@ -1391,8 +1390,6 @@ function OpenClawSettings() {
     const oc = data.openclaw;
     if (oc) {
       setUrl(oc.url || "");
-      setAuthMethod(oc.authMethod || "none");
-      setToken(oc.token || "");
       setPassword(oc.password || "");
       setModel(oc.model || "");
     }
@@ -1403,6 +1400,7 @@ function OpenClawSettings() {
   }, [loadConfig]);
 
   const checkStatus = useCallback(async () => {
+    setTesting(true);
     try {
       const res = await fetch("/api/chat/status");
       const data = await res.json();
@@ -1410,13 +1408,11 @@ function OpenClawSettings() {
         setStatus({ online: data.online, models: data.models });
       }
     } catch {
-      setStatus(null);
+      setStatus({ online: false });
+    } finally {
+      setTesting(false);
     }
   }, []);
-
-  useEffect(() => {
-    if (url) checkStatus();
-  }, [url, checkStatus]);
 
   const handleSave = async () => {
     if (!config) return;
@@ -1426,9 +1422,8 @@ function OpenClawSettings() {
         ...config,
         openclaw: {
           url: url.replace(/\/$/, ""),
-          authMethod,
-          ...(authMethod === "token" && token ? { token } : {}),
-          ...(authMethod === "password" && password ? { password } : {}),
+          authMethod: password ? "password" as const : "none" as const,
+          ...(password ? { password } : {}),
           ...(model ? { model } : {}),
         },
       };
@@ -1457,8 +1452,6 @@ function OpenClawSettings() {
       });
       setConfig(newConfig as AppConfig);
       setUrl("");
-      setAuthMethod("none");
-      setToken("");
       setPassword("");
       setModel("");
       setStatus(null);
@@ -1473,17 +1466,26 @@ function OpenClawSettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>OpenClaw Gateway (AI Chat)</CardTitle>
+        <CardTitle>OpenClaw Gateway</CardTitle>
         <MessageSquare size={16} className="text-accent-purple" />
       </CardHeader>
 
       <p className="text-xs text-muted mb-4">
-        Verbinde dich mit einem OpenClaw Gateway oder jedem OpenAI-kompatiblen
-        Endpoint für den integrierten AI Chat.
+        Verbinde deinen{" "}
+        <a
+          href="https://docs.openclaw.ai/gateway"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent-cyan hover:underline"
+        >
+          OpenClaw Gateway
+        </a>{" "}
+        für den integrierten AI Chat. Standard-Port: 18789.
       </p>
 
+      {/* Connected status */}
       {status?.online && (
-        <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] mb-4">
+        <div className="flex items-center justify-between p-3 rounded-lg bg-accent-emerald/5 border border-accent-emerald/20 mb-4">
           <div className="flex items-center gap-3">
             <StatusDot status="online" />
             <div>
@@ -1505,59 +1507,37 @@ function OpenClawSettings() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-        <div>
-          <label className="text-xs text-muted mb-1 block">Gateway URL</label>
-          <input
-            className={inputClass}
-            placeholder="http://localhost:18789"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="text-xs text-muted mb-1 block">Authentifizierung</label>
-          <select
-            className={inputClass}
-            value={authMethod}
-            onChange={(e) => setAuthMethod(e.target.value as "none" | "token" | "password")}
-          >
-            <option value="none">Keine</option>
-            <option value="token">Token (Bearer)</option>
-            <option value="password">Passwort (OPENCLAW_GATEWAY_PASSWORD)</option>
-          </select>
-        </div>
+      {/* URL */}
+      <div className="mb-3">
+        <label className="text-xs text-muted mb-1 block">Gateway URL</label>
+        <input
+          className={inputClass}
+          placeholder="http://192.168.1.100:18789"
+          value={url}
+          onChange={(e) => { setUrl(e.target.value); setStatus(null); }}
+        />
+        <p className="text-xs text-muted/50 mt-1">
+          z.B. <code className="text-accent-cyan/70">http://192.168.1.100:18789</code> oder{" "}
+          <code className="text-accent-cyan/70">http://localhost:18789</code>
+        </p>
       </div>
 
-      {authMethod === "token" && (
-        <div className="mb-3">
-          <label className="text-xs text-muted mb-1 block">API Token</label>
-          <input
-            className={inputClass}
-            type="password"
-            placeholder="Bearer Token"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-          />
-        </div>
-      )}
+      {/* Password */}
+      <div className="mb-3">
+        <label className="text-xs text-muted mb-1 block">
+          Gateway Passwort{" "}
+          <span className="text-muted/50">(falls konfiguriert)</span>
+        </label>
+        <input
+          className={inputClass}
+          type="password"
+          placeholder="Leer lassen falls keine Auth"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </div>
 
-      {authMethod === "password" && (
-        <div className="mb-3">
-          <label className="text-xs text-muted mb-1 block">Gateway Passwort</label>
-          <input
-            className={inputClass}
-            type="password"
-            placeholder="OPENCLAW_GATEWAY_PASSWORD"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <p className="text-xs text-muted/60 mt-1">
-            Das Passwort aus deiner OpenClaw Gateway Konfiguration (OPENCLAW_GATEWAY_PASSWORD)
-          </p>
-        </div>
-      )}
-
+      {/* Model */}
       <div className="mb-4">
         <label className="text-xs text-muted mb-1 block">
           Modell{" "}
@@ -1565,12 +1545,17 @@ function OpenClawSettings() {
         </label>
         <input
           className={inputClass}
-          placeholder="openclaw"
+          placeholder="openclaw (Standard)"
           value={model}
           onChange={(e) => setModel(e.target.value)}
         />
+        <p className="text-xs text-muted/50 mt-1">
+          Standard: <code className="text-accent-cyan/70">openclaw</code> &mdash; oder{" "}
+          <code className="text-accent-cyan/70">openclaw:agentName</code> f&uuml;r einen bestimmten Agenten
+        </p>
       </div>
 
+      {/* Actions */}
       <div className="flex items-center gap-3">
         <button
           onClick={handleSave}
@@ -1580,10 +1565,22 @@ function OpenClawSettings() {
           <Save size={14} />
           {saving ? "Speichern..." : "Speichern"}
         </button>
-        {url && status && !status.online && (
-          <Badge variant="danger">Nicht erreichbar</Badge>
-        )}
+        <button
+          onClick={checkStatus}
+          disabled={testing || !url}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/[0.08] text-sm font-medium hover:bg-white/[0.04] transition-colors disabled:opacity-50"
+        >
+          {testing ? <Spinner /> : <MessageSquare size={14} />}
+          {testing ? "Teste..." : "Verbindung testen"}
+        </button>
       </div>
+
+      {/* Status feedback */}
+      {url && status && !status.online && !testing && (
+        <p className="text-xs text-accent-red mt-3">
+          Gateway nicht erreichbar. Pr&uuml;fe URL und Passwort.
+        </p>
+      )}
     </Card>
   );
 }
