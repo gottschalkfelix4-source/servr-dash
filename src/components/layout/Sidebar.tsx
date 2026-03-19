@@ -125,8 +125,7 @@ export function Sidebar() {
 
       {/* Mobile hamburger */}
       <button
-        className="fixed left-3 z-50 lg:hidden rounded-lg glass p-2.5"
-        style={{ top: "max(0.75rem, env(safe-area-inset-top, 0.75rem))" }}
+        className="fixed left-3 top-3 z-50 lg:hidden rounded-lg glass p-2.5"
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label="Menü öffnen"
       >
