@@ -179,7 +179,7 @@ export default function ChatPage() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-3">
-          <h1 className="text-base sm:text-lg font-semibold">AI Chat</h1>
+          <h1 className="text-base sm:text-lg font-semibold">Chat</h1>
           {gatewayStatus ? (
             <div
               className={`flex items-center gap-1.5 text-xs ${
