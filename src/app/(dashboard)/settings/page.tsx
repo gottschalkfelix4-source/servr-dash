@@ -1376,7 +1376,6 @@ function OpenClawSettings() {
   const [url, setUrl] = useState("");
   const [authMethod, setAuthMethod] = useState<"none" | "token" | "password">("none");
   const [token, setToken] = useState("");
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [model, setModel] = useState("");
   const [saving, setSaving] = useState(false);
@@ -1394,7 +1393,6 @@ function OpenClawSettings() {
       setUrl(oc.url || "");
       setAuthMethod(oc.authMethod || "none");
       setToken(oc.token || "");
-      setUsername(oc.username || "");
       setPassword(oc.password || "");
       setModel(oc.model || "");
     }
@@ -1430,7 +1428,6 @@ function OpenClawSettings() {
           url: url.replace(/\/$/, ""),
           authMethod,
           ...(authMethod === "token" && token ? { token } : {}),
-          ...(authMethod === "password" && username ? { username } : {}),
           ...(authMethod === "password" && password ? { password } : {}),
           ...(model ? { model } : {}),
         },
@@ -1462,7 +1459,6 @@ function OpenClawSettings() {
       setUrl("");
       setAuthMethod("none");
       setToken("");
-      setUsername("");
       setPassword("");
       setModel("");
       setStatus(null);
@@ -1547,26 +1543,18 @@ function OpenClawSettings() {
       )}
 
       {authMethod === "password" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-          <div>
-            <label className="text-xs text-muted mb-1 block">Benutzername</label>
-            <input
-              className={inputClass}
-              placeholder="admin"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted mb-1 block">Passwort</label>
-            <input
-              className={inputClass}
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+        <div className="mb-3">
+          <label className="text-xs text-muted mb-1 block">Gateway Passwort</label>
+          <input
+            className={inputClass}
+            type="password"
+            placeholder="OPENCLAW_GATEWAY_PASSWORD"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <p className="text-xs text-muted/60 mt-1">
+            Das Passwort aus deiner OpenClaw Gateway Konfiguration (OPENCLAW_GATEWAY_PASSWORD)
+          </p>
         </div>
       )}
 

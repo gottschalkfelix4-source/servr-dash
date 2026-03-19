@@ -96,7 +96,6 @@ export interface AppConfig {
     url: string;
     authMethod?: "none" | "token" | "password";
     token?: string;
-    username?: string;
     password?: string;
     model?: string;
   };

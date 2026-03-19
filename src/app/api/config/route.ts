@@ -28,6 +28,15 @@ function sanitizeConfig(config: AppConfig): Record<string, unknown> {
       ? { url: config.synology.url, username: config.synology.username, password: "••••••••" }
       : undefined,
     tmdbApiKey: config.tmdbApiKey ? "••••••••" : undefined,
+    openclaw: config.openclaw
+      ? {
+          url: config.openclaw.url,
+          authMethod: config.openclaw.authMethod || "none",
+          token: config.openclaw.token ? "••••••••" : undefined,
+          password: config.openclaw.password ? "••••••••" : undefined,
+          model: config.openclaw.model,
+        }
+      : undefined,
   };
 }
 
@@ -119,6 +128,25 @@ export async function PUT(request: Request) {
       };
     } else if (body.synology === undefined && existing.synology) {
       merged.synology = existing.synology;
+    }
+
+    // OpenClaw
+    if (body.openclaw) {
+      merged.openclaw = {
+        url: body.openclaw.url,
+        authMethod: body.openclaw.authMethod || "none",
+        token:
+          body.openclaw.token === "••••••••"
+            ? existing.openclaw?.token
+            : body.openclaw.token,
+        password:
+          body.openclaw.password === "••••••••"
+            ? existing.openclaw?.password
+            : body.openclaw.password,
+        model: body.openclaw.model,
+      };
+    } else if (body.openclaw === undefined && existing.openclaw) {
+      merged.openclaw = existing.openclaw;
     }
 
     // TMDB

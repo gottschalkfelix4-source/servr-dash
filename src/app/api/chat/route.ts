@@ -23,8 +23,8 @@ export async function POST(request: NextRequest) {
     };
     if (openclaw.authMethod === "token" && openclaw.token) {
       headers["Authorization"] = `Bearer ${openclaw.token}`;
-    } else if (openclaw.authMethod === "password" && openclaw.username && openclaw.password) {
-      headers["Authorization"] = `Basic ${Buffer.from(`${openclaw.username}:${openclaw.password}`).toString("base64")}`;
+    } else if (openclaw.authMethod === "password" && openclaw.password) {
+      headers["Authorization"] = `Bearer ${openclaw.password}`;
     }
 
     const gatewayUrl = `${openclaw.url.replace(/\/$/, "")}/v1/chat/completions`;
