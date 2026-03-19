@@ -26,7 +26,7 @@ const pageTitles: Record<string, string> = {
   "/backups/tasks": "Backup-Tasks",
   "/backups/logs": "Backup-Verlauf",
   "/dns": "DNS Management",
-  "/chat": "AI Chat",
+  "/chat": "OpenClaw",
   "/plex": "Plex",
   "/plex/streams": "Active Streams",
   "/settings": "Einstellungen",

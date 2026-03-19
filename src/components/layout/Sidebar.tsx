@@ -24,7 +24,7 @@ import {
   ListChecks,
   ScrollText,
   Globe,
-  MessageSquare,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -97,9 +97,9 @@ const navItems: NavItem[] = [
     icon: <Globe size={20} />,
   },
   {
-    label: "AI Chat",
+    label: "OpenClaw",
     href: "/chat",
-    icon: <MessageSquare size={20} />,
+    icon: <Bot size={20} />,
   },
   {
     label: "Einstellungen",
