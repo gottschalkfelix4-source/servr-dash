@@ -23,13 +23,15 @@ export async function GET() {
   if (openclaw.password) log("Passwort: gesetzt");
   if (openclaw.model) log(`Modell: ${openclaw.model}`);
 
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "Accept": "application/json",
+  };
   if (openclaw.authMethod === "token" && openclaw.token) {
     headers["Authorization"] = `Bearer ${openclaw.token}`;
     log("Auth Header: Bearer Token");
   } else if (openclaw.authMethod === "password" && openclaw.password) {
     headers["Authorization"] = `Bearer ${openclaw.password}`;
-    log("Auth Header: Bearer Password");
+    log(`Auth Header: Bearer ***${openclaw.password.slice(-4)}`);
   } else {
     log("Auth Header: keiner (keine Auth)");
   }
@@ -47,15 +49,34 @@ export async function GET() {
     log(`/v1/models → Status ${modelsRes.status} ${modelsRes.statusText}`);
 
     if (modelsRes.ok) {
-      const data = await modelsRes.json();
-      const models = data.data?.map((m: { id: string }) => m.id) || [];
-      log(`Modelle gefunden: ${models.join(", ") || "keine"}`);
-      log("Verbindung erfolgreich!");
-      return NextResponse.json({ configured: true, online: true, models, logs });
-    }
+      const contentType = modelsRes.headers.get("content-type") || "";
+      const body = await modelsRes.text();
 
-    const errText = await modelsRes.text().catch(() => "");
-    if (errText) log(`Response: ${errText.substring(0, 200)}`);
+      if (contentType.includes("application/json") || body.trimStart().startsWith("{") || body.trimStart().startsWith("[")) {
+        try {
+          const data = JSON.parse(body);
+          const models = data.data?.map((m: { id: string }) => m.id) || [];
+          log(`Modelle gefunden: ${models.join(", ") || "keine"}`);
+          log("Verbindung erfolgreich!");
+          return NextResponse.json({ configured: true, online: true, models, logs });
+        } catch (e) {
+          log(`JSON Parse Fehler: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+
+      // Got HTML back — likely gateway login page, auth failed
+      if (body.includes("<!doctype") || body.includes("<html")) {
+        log("Gateway gibt HTML zurück statt JSON → Auth fehlgeschlagen");
+        log("→ Prüfe ob dein Passwort korrekt ist");
+        log("→ Prüfe ob die OpenAI HTTP API im Gateway aktiviert ist");
+        log("  (openclaw.json: gateway.apiServer.enabled: true)");
+      } else {
+        log(`Unerwartete Response: ${body.substring(0, 200)}`);
+      }
+    } else {
+      const errText = await modelsRes.text().catch(() => "");
+      if (errText) log(`Response: ${errText.substring(0, 200)}`);
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     log(`/v1/models Fehler: ${msg}`);
