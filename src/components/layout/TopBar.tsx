@@ -52,7 +52,7 @@ export function TopBar() {
   };
 
   return (
-    <header className="h-14 sm:h-16 border-b border-white/[0.06] bg-card-solid/40 backdrop-blur-xl flex items-center justify-between px-3 sm:px-6">
+    <header className="h-14 sm:h-16 border-b border-white/[0.06] bg-card-solid/40 backdrop-blur-xl flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top,0px)] lg:pt-0">
       <div className="flex items-center gap-3 pl-10 lg:pl-0">
         <h1 className="text-base sm:text-lg font-semibold truncate">{title}</h1>
       </div>
