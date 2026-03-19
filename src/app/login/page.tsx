@@ -113,7 +113,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 autoComplete={needsSetup ? "new-password" : "current-password"}
                 required
-                minLength={4}
+                minLength={8}
               />
             </div>
           </div>

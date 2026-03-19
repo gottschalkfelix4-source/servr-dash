@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { ENCODED_KEY } from "@/lib/auth/jwt";
 
-const SECRET_KEY = process.env.AUTH_SECRET || "servr-dash-default-secret-change-me";
-const ENCODED_KEY = new TextEncoder().encode(SECRET_KEY);
 const COOKIE_NAME = "servr-auth";
 
 const PUBLIC_PATHS = [
@@ -13,6 +12,9 @@ const PUBLIC_PATHS = [
   "/api/auth/logout",
 ];
 
+// Only allow actual static file extensions to bypass auth
+const STATIC_EXT_REGEX = /\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot|map|webp|avif|json|webmanifest)$/;
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -21,7 +23,7 @@ export async function middleware(request: NextRequest) {
     PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
-    pathname.includes(".")
+    STATIC_EXT_REGEX.test(pathname)
   ) {
     return NextResponse.next();
   }
@@ -29,7 +31,6 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
   if (!token) {
-    // API routes get 401, pages get redirect
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -40,7 +41,6 @@ export async function middleware(request: NextRequest) {
     await jwtVerify(token, ENCODED_KEY);
     return NextResponse.next();
   } catch {
-    // Invalid token - clear cookie and redirect
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

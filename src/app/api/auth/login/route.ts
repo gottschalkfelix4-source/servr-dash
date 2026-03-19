@@ -1,8 +1,37 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { getUserByUsername, verifyPassword } from "@/lib/auth/users";
 import { createSession } from "@/lib/auth/session";
+import { checkRateLimit } from "@/lib/auth/rate-limit";
 
-export async function POST(request: Request) {
+// 5 attempts per 15 minutes per IP
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 15 * 60 * 1000;
+
+function getClientIp(request: NextRequest): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown"
+  );
+}
+
+export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`login:${ip}`, MAX_ATTEMPTS, WINDOW_MS);
+
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Zu viele Anmeldeversuche. Bitte warte einige Minuten." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)),
+        },
+      }
+    );
+  }
+
   try {
     const { username, password } = await request.json();
 
@@ -33,9 +62,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       user: { id: user.id, username: user.username, role: user.role },
     });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Login failed" },
+      { error: "Anmeldung fehlgeschlagen" },
       { status: 500 }
     );
   }

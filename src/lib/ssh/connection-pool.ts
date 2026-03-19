@@ -1,6 +1,6 @@
 import { Client } from "ssh2";
 import { readFileSync } from "fs";
-import { resolve } from "path";
+import { resolve as pathResolve, normalize } from "path";
 import type { ServerConfig } from "@/types/server";
 
 interface PooledConnection {
@@ -17,6 +17,7 @@ class SSHConnectionPool {
   private connecting = new Map<string, Promise<Client>>();
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
   private static IDLE_TIMEOUT = 120_000; // 2 minutes
+  private static MAX_POOL_SIZE = 50;
 
   constructor() {
     // Cleanup idle connections every 30 seconds
@@ -40,6 +41,20 @@ class SSHConnectionPool {
       return existing.client;
     }
 
+    // Enforce pool size limit
+    if (this.connections.size >= SSHConnectionPool.MAX_POOL_SIZE) {
+      // Evict oldest idle connection
+      let oldestKey: string | null = null;
+      let oldestTime = Infinity;
+      for (const [key, conn] of this.connections) {
+        if (conn.lastUsed < oldestTime) {
+          oldestTime = conn.lastUsed;
+          oldestKey = key;
+        }
+      }
+      if (oldestKey) this.disconnect(oldestKey);
+    }
+
     // Avoid concurrent connection attempts to the same server
     const pending = this.connecting.get(server.id);
     if (pending) return pending;
@@ -60,7 +75,7 @@ class SSHConnectionPool {
       const client = new Client();
       const timeout = setTimeout(() => {
         client.end();
-        reject(new Error(`SSH connection timeout for ${server.host}`));
+        reject(new Error(`SSH connection timeout for ${server.name || server.id}`));
       }, 10000);
 
       client.on("ready", () => {
@@ -128,11 +143,25 @@ class SSHConnectionPool {
 
       if (server.authMethod === "key" && server.privateKeyPath) {
         try {
-          const keyPath = server.privateKeyPath.replace("~", process.env.HOME || process.env.USERPROFILE || "");
-          connectConfig.privateKey = readFileSync(keyPath);
+          const home = process.env.HOME || process.env.USERPROFILE || "";
+          const keyPath = normalize(
+            server.privateKeyPath.replace("~", home)
+          );
+          // Restrict to home .ssh directory or /etc/ssh
+          const sshDir = normalize(pathResolve(home, ".ssh"));
+          const resolvedPath = normalize(pathResolve(keyPath));
+          if (
+            !resolvedPath.startsWith(sshDir) &&
+            !resolvedPath.startsWith("/etc/ssh")
+          ) {
+            clearTimeout(timeout);
+            reject(new Error("SSH key must be in ~/.ssh/ directory"));
+            return;
+          }
+          connectConfig.privateKey = readFileSync(resolvedPath);
         } catch (err) {
           clearTimeout(timeout);
-          reject(new Error(`Failed to read SSH key: ${server.privateKeyPath}`));
+          reject(new Error("Failed to read SSH key"));
           return;
         }
       } else if (server.password) {

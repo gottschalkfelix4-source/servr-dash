@@ -9,6 +9,27 @@ import type {
   DockerAction,
 } from "@/types/docker";
 
+// Strict validation for Docker IDs (container, image)
+// Docker IDs: hex strings (short or full), or name:tag format
+const DOCKER_ID_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_.\-/:]*$/;
+const MAX_ID_LENGTH = 256;
+
+function validateDockerIdOrThrow(id: string, label: string): void {
+  if (
+    !id ||
+    id.length > MAX_ID_LENGTH ||
+    !DOCKER_ID_REGEX.test(id)
+  ) {
+    throw new Error(`Invalid ${label}: contains disallowed characters`);
+  }
+}
+
+function validatePositiveInt(value: number, label: string, max = 10000): number {
+  const n = Math.floor(value);
+  if (!Number.isFinite(n) || n < 1) return 200;
+  return Math.min(n, max);
+}
+
 function parseJsonLines<T>(output: string): T[] {
   return output
     .trim()
@@ -40,6 +61,7 @@ export class DockerClient {
   }
 
   async inspectContainer(containerId: string): Promise<DockerContainerInspect> {
+    validateDockerIdOrThrow(containerId, "container ID");
     const output = await this.exec(`docker inspect ${containerId}`);
     const data = JSON.parse(output);
     const c = data[0];
@@ -86,6 +108,7 @@ export class DockerClient {
   }
 
   async containerAction(containerId: string, action: DockerAction): Promise<string> {
+    validateDockerIdOrThrow(containerId, "container ID");
     switch (action) {
       case "start":
         return this.exec(`docker start ${containerId}`);
@@ -99,7 +122,9 @@ export class DockerClient {
   }
 
   async containerLogs(containerId: string, tail = 200): Promise<string> {
-    return this.exec(`docker logs --tail ${tail} --timestamps ${containerId} 2>&1`);
+    validateDockerIdOrThrow(containerId, "container ID");
+    const safeTail = validatePositiveInt(tail, "tail");
+    return this.exec(`docker logs --tail ${safeTail} --timestamps ${containerId} 2>&1`);
   }
 
   async containerStats(): Promise<DockerContainerStats[]> {
@@ -160,6 +185,7 @@ export class DockerClient {
   }
 
   async removeImage(imageId: string): Promise<string> {
+    validateDockerIdOrThrow(imageId, "image ID");
     return this.exec(`docker rmi ${imageId}`);
   }
 

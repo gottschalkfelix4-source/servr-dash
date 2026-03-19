@@ -14,16 +14,27 @@ export async function PUT(
   const { id } = await params;
   try {
     const body = await request.json();
+
     if (body.password) {
+      if (body.password.length < 8) {
+        return NextResponse.json(
+          { error: "Passwort muss mindestens 8 Zeichen haben" },
+          { status: 400 }
+        );
+      }
       await updateUserPassword(id, body.password);
     }
+
     if (body.role) {
-      updateUserRole(id, body.role);
+      // Strict role validation
+      const validRole = body.role === "admin" ? "admin" : "user";
+      updateUserRole(id, validRole);
     }
+
     return NextResponse.json({ success: true });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Update failed" },
+      { error: "Update fehlgeschlagen" },
       { status: 500 }
     );
   }
@@ -49,9 +60,9 @@ export async function DELETE(
   try {
     deleteUser(id);
     return NextResponse.json({ success: true });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Delete failed" },
+      { error: "Löschen fehlgeschlagen" },
       { status: 500 }
     );
   }
