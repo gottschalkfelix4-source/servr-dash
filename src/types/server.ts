@@ -94,7 +94,10 @@ export interface AppConfig {
   tmdbApiKey?: string;
   openclaw?: {
     url: string;
+    authMethod?: "none" | "token" | "password";
     token?: string;
+    username?: string;
+    password?: string;
     model?: string;
   };
   [key: string]: unknown;

@@ -1374,7 +1374,10 @@ function TmdbSettings() {
 function OpenClawSettings() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [url, setUrl] = useState("");
+  const [authMethod, setAuthMethod] = useState<"none" | "token" | "password">("none");
   const [token, setToken] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [model, setModel] = useState("");
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{
@@ -1389,7 +1392,10 @@ function OpenClawSettings() {
     const oc = data.openclaw;
     if (oc) {
       setUrl(oc.url || "");
+      setAuthMethod(oc.authMethod || "none");
       setToken(oc.token || "");
+      setUsername(oc.username || "");
+      setPassword(oc.password || "");
       setModel(oc.model || "");
     }
   }, []);
@@ -1422,7 +1428,10 @@ function OpenClawSettings() {
         ...config,
         openclaw: {
           url: url.replace(/\/$/, ""),
-          ...(token ? { token } : {}),
+          authMethod,
+          ...(authMethod === "token" && token ? { token } : {}),
+          ...(authMethod === "password" && username ? { username } : {}),
+          ...(authMethod === "password" && password ? { password } : {}),
           ...(model ? { model } : {}),
         },
       };
@@ -1451,7 +1460,10 @@ function OpenClawSettings() {
       });
       setConfig(newConfig as AppConfig);
       setUrl("");
+      setAuthMethod("none");
       setToken("");
+      setUsername("");
+      setPassword("");
       setModel("");
       setStatus(null);
     } finally {
@@ -1497,7 +1509,7 @@ function OpenClawSettings() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
         <div>
           <label className="text-xs text-muted mb-1 block">Gateway URL</label>
           <input
@@ -1508,10 +1520,22 @@ function OpenClawSettings() {
           />
         </div>
         <div>
-          <label className="text-xs text-muted mb-1 block">
-            Token{" "}
-            <span className="text-muted/50">(optional)</span>
-          </label>
+          <label className="text-xs text-muted mb-1 block">Authentifizierung</label>
+          <select
+            className={inputClass}
+            value={authMethod}
+            onChange={(e) => setAuthMethod(e.target.value as "none" | "token" | "password")}
+          >
+            <option value="none">Keine</option>
+            <option value="token">API Token (Bearer)</option>
+            <option value="password">Benutzername & Passwort (Basic)</option>
+          </select>
+        </div>
+      </div>
+
+      {authMethod === "token" && (
+        <div className="mb-3">
+          <label className="text-xs text-muted mb-1 block">API Token</label>
           <input
             className={inputClass}
             type="password"
@@ -1520,18 +1544,43 @@ function OpenClawSettings() {
             onChange={(e) => setToken(e.target.value)}
           />
         </div>
-        <div>
-          <label className="text-xs text-muted mb-1 block">
-            Modell{" "}
-            <span className="text-muted/50">(optional)</span>
-          </label>
-          <input
-            className={inputClass}
-            placeholder="default"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-          />
+      )}
+
+      {authMethod === "password" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-xs text-muted mb-1 block">Benutzername</label>
+            <input
+              className={inputClass}
+              placeholder="admin"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted mb-1 block">Passwort</label>
+            <input
+              className={inputClass}
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
         </div>
+      )}
+
+      <div className="mb-4">
+        <label className="text-xs text-muted mb-1 block">
+          Modell{" "}
+          <span className="text-muted/50">(optional)</span>
+        </label>
+        <input
+          className={inputClass}
+          placeholder="default"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+        />
       </div>
 
       <div className="flex items-center gap-3">

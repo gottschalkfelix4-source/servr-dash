@@ -13,8 +13,10 @@ export async function GET() {
 
   try {
     const headers: Record<string, string> = {};
-    if (openclaw.token) {
+    if (openclaw.authMethod === "token" && openclaw.token) {
       headers["Authorization"] = `Bearer ${openclaw.token}`;
+    } else if (openclaw.authMethod === "password" && openclaw.username && openclaw.password) {
+      headers["Authorization"] = `Basic ${Buffer.from(`${openclaw.username}:${openclaw.password}`).toString("base64")}`;
     }
 
     // Try to fetch models list to verify connection
