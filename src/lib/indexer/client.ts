@@ -41,18 +41,21 @@ export interface IndexerStats {
   caps: IndexerCaps | null;
   online: boolean;
   error?: string;
+  debug?: string[];
 }
 
 function parseXml(text: string) {
   // Simple XML attribute/tag parser for Newznab responses
   const getAttr = (tag: string, attr: string): string => {
-    const re = new RegExp(`<${tag}[^>]*?${attr}="([^"]*)"`, "i");
+    // Support both <tag and <namespace:tag
+    const re = new RegExp(`<(?:\\w+:)?${tag}[^>]*?${attr}="([^"]*)"`, "i");
     const m = text.match(re);
     return m?.[1] || "";
   };
 
   const getAllAttrs = (tag: string): Record<string, string> => {
-    const re = new RegExp(`<${tag}\\s+([^>]*)`, "i");
+    // Support both <tag and <namespace:tag (e.g. newznab:apilimits)
+    const re = new RegExp(`<(?:\\w+:)?${tag}\\s+([^>]*)`, "i");
     const m = text.match(re);
     if (!m) return {};
     const attrs: Record<string, string> = {};
@@ -69,6 +72,7 @@ function parseXml(text: string) {
 
 export async function fetchIndexerStats(config: IndexerConfig): Promise<IndexerStats> {
   const baseUrl = config.url.replace(/\/$/, "");
+  const debug: string[] = [];
   const result: IndexerStats = {
     user: null,
     limits: null,
@@ -84,8 +88,10 @@ export async function fetchIndexerStats(config: IndexerConfig): Promise<IndexerS
     );
     if (userRes.ok) {
       const text = await userRes.text();
+      debug.push(`user response (first 500): ${text.substring(0, 500)}`);
       const { getAllAttrs } = parseXml(text);
       const userAttrs = getAllAttrs("user");
+      debug.push(`user attrs: ${JSON.stringify(userAttrs)}`);
 
       if (userAttrs.username) {
         result.user = {
@@ -101,9 +107,10 @@ export async function fetchIndexerStats(config: IndexerConfig): Promise<IndexerS
         };
       }
 
-      // Parse API limits from the response
+      // Parse API limits from the response (tag: newznab:apilimits or apilimits)
       const limitsAttrs = getAllAttrs("apilimits");
-      if (limitsAttrs.apicurrent || limitsAttrs.apimax) {
+      debug.push(`apilimits attrs: ${JSON.stringify(limitsAttrs)}`);
+      if (Object.keys(limitsAttrs).length > 0) {
         result.limits = {
           apiCurrent: parseInt(limitsAttrs.apicurrent || "0"),
           apiMax: parseInt(limitsAttrs.apimax || "0"),
@@ -191,5 +198,6 @@ export async function fetchIndexerStats(config: IndexerConfig): Promise<IndexerS
     }
   }
 
+  result.debug = debug;
   return result;
 }
