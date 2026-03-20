@@ -25,6 +25,7 @@ import {
   ScrollText,
   Globe,
   Bot,
+  Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +91,11 @@ const navItems: NavItem[] = [
     label: "Plex",
     href: "/plex",
     icon: <Tv size={20} />,
+  },
+  {
+    label: "Indexer",
+    href: "/indexer",
+    icon: <Database size={20} />,
   },
   {
     label: "DNS",

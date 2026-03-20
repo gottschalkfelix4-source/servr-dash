@@ -24,6 +24,7 @@ import {
   TrendingUp,
   Globe,
   MessageSquare,
+  Database,
 } from "lucide-react";
 import type { ServerConfig, AppConfig } from "@/types/server";
 import type { SafeUser } from "@/types/auth";
@@ -55,6 +56,7 @@ export default function SettingsPage() {
         <CloudflareSettings />
         <SynologySettings />
         <TmdbSettings />
+        <IndexerSettings />
         <OpenClawSettings />
         <UserManagement />
       </div>
@@ -1365,6 +1367,166 @@ function TmdbSettings() {
       {status === "error" && (
         <p className="text-xs text-accent-red mt-2">✗ API Key ungültig</p>
       )}
+    </Card>
+  );
+}
+
+// --- Indexer Settings ---
+
+function IndexerSettings() {
+  const [config, setConfig] = useState<AppConfig | null>(null);
+  const [indexers, setIndexers] = useState<{ name: string; url: string; apiKey: string }[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newUrl, setNewUrl] = useState("");
+  const [newApiKey, setNewApiKey] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const loadConfig = useCallback(async () => {
+    const res = await fetch("/api/config");
+    const data = await res.json();
+    setConfig(data);
+    setIndexers((data as Record<string, unknown>).indexers as { name: string; url: string; apiKey: string }[] || []);
+  }, []);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  const saveIndexers = async (updated: { name: string; url: string; apiKey: string }[]) => {
+    if (!config) return;
+    setSaving(true);
+    try {
+      const newConfig = { ...config, indexers: updated };
+      await fetch("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newConfig),
+      });
+      setConfig(newConfig as AppConfig);
+      setIndexers(updated);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAdd = async () => {
+    if (!newName || !newUrl || !newApiKey) return;
+    const updated = [...indexers, { name: newName, url: newUrl.replace(/\/$/, ""), apiKey: newApiKey }];
+    await saveIndexers(updated);
+    setNewName("");
+    setNewUrl("");
+    setNewApiKey("");
+    setAdding(false);
+  };
+
+  const handleRemove = async (idx: number) => {
+    if (!confirm(`Indexer "${indexers[idx].name}" wirklich entfernen?`)) return;
+    const updated = indexers.filter((_, i) => i !== idx);
+    await saveIndexers(updated);
+  };
+
+  const inputClass =
+    "w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent-cyan/50 focus:shadow-[0_0_15px_-5px_rgba(34,211,238,0.3)] transition-all duration-200";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Usenet Indexer</CardTitle>
+        <button
+          onClick={() => setAdding(!adding)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-cyan/10 text-accent-cyan text-sm font-medium hover:bg-accent-cyan/20 transition-colors"
+        >
+          <Plus size={14} />
+          Hinzufügen
+        </button>
+      </CardHeader>
+
+      <p className="text-xs text-muted mb-4">
+        Newznab-kompatible Usenet Indexer für API & Download Statistiken.
+      </p>
+
+      {adding && (
+        <div className="p-4 rounded-lg border border-white/[0.06] bg-card backdrop-blur-xl mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <div>
+              <label className="text-xs text-muted mb-1 block">Name</label>
+              <input
+                className={inputClass}
+                placeholder="SceneNZBs"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted mb-1 block">URL</label>
+              <input
+                className={inputClass}
+                placeholder="https://scenenzbs.com"
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted mb-1 block">API Key</label>
+              <input
+                className={inputClass}
+                type="password"
+                placeholder="API Key vom Profil"
+                value={newApiKey}
+                onChange={(e) => setNewApiKey(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleAdd}
+              disabled={saving || !newName || !newUrl || !newApiKey}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-cyan text-background text-sm font-medium hover:bg-accent-cyan/90 transition-colors disabled:opacity-50"
+            >
+              <Save size={14} />
+              {saving ? "..." : "Hinzufügen"}
+            </button>
+            <button
+              onClick={() => setAdding(false)}
+              className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-background transition-colors"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {indexers.map((indexer, idx) => (
+          <div
+            key={idx}
+            className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-accent-amber/10 flex items-center justify-center">
+                <Database size={16} className="text-accent-amber" />
+              </div>
+              <div>
+                <span className="font-medium text-sm">{indexer.name}</span>
+                <span className="text-xs text-muted block">{indexer.url}</span>
+              </div>
+            </div>
+            <button
+              onClick={() => handleRemove(idx)}
+              className="p-1.5 rounded hover:bg-accent-red/20 text-muted hover:text-accent-red transition-colors"
+              title="Entfernen"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+        {indexers.length === 0 && !adding && (
+          <div className="text-center py-6 text-sm text-muted">
+            Noch keine Indexer konfiguriert.
+          </div>
+        )}
+      </div>
     </Card>
   );
 }

@@ -27,6 +27,11 @@ function sanitizeConfig(config: AppConfig): Record<string, unknown> {
     synology: config.synology
       ? { url: config.synology.url, username: config.synology.username, password: "••••••••" }
       : undefined,
+    indexers: (config.indexers || []).map((i) => ({
+      name: i.name,
+      url: i.url,
+      apiKey: i.apiKey ? "••••••••" : undefined,
+    })),
     tmdbApiKey: config.tmdbApiKey ? "••••••••" : undefined,
     openclaw: config.openclaw
       ? {
@@ -128,6 +133,22 @@ export async function PUT(request: Request) {
       };
     } else if (body.synology === undefined && existing.synology) {
       merged.synology = existing.synology;
+    }
+
+    // Indexers
+    if (body.indexers) {
+      merged.indexers = body.indexers.map(
+        (i: { name: string; url: string; apiKey: string }, idx: number) => ({
+          name: i.name,
+          url: i.url,
+          apiKey:
+            i.apiKey === "••••••••"
+              ? existing.indexers?.[idx]?.apiKey || ""
+              : i.apiKey,
+        })
+      );
+    } else if (body.indexers === undefined && existing.indexers) {
+      merged.indexers = existing.indexers;
     }
 
     // OpenClaw
