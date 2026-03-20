@@ -216,7 +216,7 @@ function DashboardTab({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
       {indexers.map((indexer, idx) => (
         <IndexerDashboard
           key={indexer.url}
@@ -228,7 +228,7 @@ function DashboardTab({
   );
 }
 
-// --- Indexer Dashboard (main visual) ---
+// --- Indexer Dashboard (compact single card) ---
 
 function IndexerDashboard({
   indexer,
@@ -251,8 +251,8 @@ function IndexerDashboard({
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-accent-red/10 flex items-center justify-center">
-              <Database size={20} className="text-accent-red" />
+            <div className="h-9 w-9 rounded-lg bg-accent-red/10 flex items-center justify-center">
+              <Database size={18} className="text-accent-red" />
             </div>
             <div>
               <CardTitle>{indexer.name}</CardTitle>
@@ -268,297 +268,152 @@ function IndexerDashboard({
     );
   }
 
-  const grabsRemaining = limits
-    ? limits.grabMax > 0
-      ? limits.grabMax - limits.grabCurrent
-      : null
-    : null;
-  const grabsPercent = limits && limits.grabMax > 0
-    ? (limits.grabCurrent / limits.grabMax) * 100
-    : 0;
+  const grabsRemaining = limits && limits.grabMax > 0 ? limits.grabMax - limits.grabCurrent : null;
+  const grabsPercent = limits && limits.grabMax > 0 ? (limits.grabCurrent / limits.grabMax) * 100 : 0;
+  const apiPercent = limits && limits.apiMax > 0 ? (limits.apiCurrent / limits.apiMax) * 100 : 0;
 
   return (
-    <div className="space-y-4">
+    <Card>
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-accent-amber/10 flex items-center justify-center shadow-[0_0_12px_-3px_rgba(251,191,36,0.3)]">
-          <Database size={20} className="text-accent-amber" />
-        </div>
-        <div>
-          <h3 className="font-semibold text-lg">{indexer.name}</h3>
-          <span className="text-xs text-muted">{indexer.url}</span>
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-accent-amber/10 flex items-center justify-center shadow-[0_0_10px_-3px_rgba(251,191,36,0.3)]">
+            <Database size={18} className="text-accent-amber" />
+          </div>
+          <div>
+            <CardTitle>{indexer.name}</CardTitle>
+            <span className="text-xs text-muted">{indexer.url}</span>
+          </div>
         </div>
         <StatusDot status="online" />
-      </div>
+      </CardHeader>
 
-      {/* Top Row: User Info + API & Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* User Info Card */}
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <User size={16} className="text-accent-cyan" />
-            <span className="font-semibold text-sm text-accent-cyan">
-              User Info
-            </span>
-          </div>
-          <div className="space-y-3">
-            {user?.username && (
-              <UserInfoRow
-                icon={<User size={13} />}
-                label="Username"
-                value={user.username}
-              />
-            )}
-            {user?.email && (
-              <UserInfoRow
-                icon={<Mail size={13} />}
-                label="Email"
-                value={user.email}
-                verified
-              />
-            )}
-            {user?.createdAt && (
-              <UserInfoRow
-                icon={<Calendar size={13} />}
-                label="Registriert"
-                value={user.createdAt}
-              />
-            )}
-            {user?.lastLogin && (
-              <UserInfoRow
-                icon={<Clock size={13} />}
-                label="Letzter Login"
-                value={user.lastLogin}
-              />
-            )}
-            {user?.role && (
-              <UserInfoRow
-                icon={<Crown size={13} />}
-                label="Rolle"
-                value={
-                  <Badge
-                    variant={
-                      user.role.toLowerCase().includes("supporter") ||
-                      user.role.toLowerCase().includes("vip")
-                        ? "warning"
-                        : "default"
-                    }
-                  >
-                    {user.role}
-                  </Badge>
-                }
-              />
-            )}
-            {user?.expiresAt && (
-              <UserInfoRow
-                icon={<Shield size={13} />}
-                label="Läuft ab"
-                value={
-                  <span className="text-accent-emerald font-medium">
-                    {user.expiresAt}
-                  </span>
-                }
-              />
-            )}
-          </div>
-        </Card>
-
-        {/* API & Stats Card */}
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <Key size={16} className="text-accent-red" />
-            <span className="font-semibold text-sm text-accent-red">
-              API & Stats
-            </span>
-          </div>
-
-          {/* API Key */}
-          {apiKey && (
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] mb-4">
-              <div className="flex items-center gap-2 min-w-0">
-                <Key size={13} className="text-muted flex-shrink-0" />
-                <span className="text-xs text-muted">Site API / RSS Key</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <code className="text-xs text-accent-cyan font-mono truncate max-w-[180px]">
-                  {apiKey}
-                </code>
-                <button
-                  onClick={copyKey}
-                  className="p-1 rounded hover:bg-white/[0.08] transition-colors"
-                  title="Kopieren"
-                >
-                  {copied ? (
-                    <Check size={13} className="text-accent-emerald" />
-                  ) : (
-                    <Copy size={13} className="text-muted" />
-                  )}
-                </button>
-              </div>
-            </div>
+      {/* User Info rows */}
+      {user && (
+        <div className="space-y-1.5 mb-4">
+          {user.username && <UserInfoRow icon={<User size={12} />} label="Username" value={user.username} />}
+          {user.email && <UserInfoRow icon={<Mail size={12} />} label="Email" value={user.email} verified />}
+          {user.role && (
+            <UserInfoRow
+              icon={<Crown size={12} />}
+              label="Rolle"
+              value={
+                <Badge variant={user.role.toLowerCase().includes("supporter") || user.role.toLowerCase().includes("vip") ? "warning" : "default"}>
+                  {user.role}
+                </Badge>
+              }
+            />
           )}
+          {user.expiresAt && (
+            <UserInfoRow icon={<Shield size={12} />} label="Läuft ab" value={<span className="text-accent-emerald font-medium">{user.expiresAt}</span>} />
+          )}
+        </div>
+      )}
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-3">
-            <StatBox
-              icon={<Activity size={14} className="text-accent-cyan" />}
-              label="API (24h rolling)"
-              value={limits?.apiCurrent?.toString() || "0"}
-              max={
-                limits?.apiMax
-                  ? limits.apiMax > 0
-                    ? limits.apiMax.toString()
-                    : "∞"
-                  : "–"
-              }
-            />
-            <StatBox
-              icon={<Download size={14} className="text-accent-emerald" />}
-              label="Grabs (24h rolling)"
-              value={limits?.grabCurrent?.toString() || "0"}
-              max={
-                limits?.grabMax
-                  ? limits.grabMax > 0
-                    ? limits.grabMax.toString()
-                    : "∞"
-                  : "–"
-              }
-            />
-            <StatBox
-              icon={<Database size={14} className="text-accent-purple" />}
-              label="Grabs Total"
-              value={user?.grabs?.toLocaleString("de-DE") || "0"}
-            />
+      {/* API Key */}
+      {apiKey && (
+        <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] mb-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <Key size={12} className="text-muted flex-shrink-0" />
+            <span className="text-[10px] text-muted">API Key</span>
           </div>
-        </Card>
+          <div className="flex items-center gap-1.5">
+            <code className="text-[10px] text-accent-cyan font-mono truncate max-w-[140px]">{apiKey}</code>
+            <button onClick={copyKey} className="p-0.5 rounded hover:bg-white/[0.08] transition-colors" title="Kopieren">
+              {copied ? <Check size={12} className="text-accent-emerald" /> : <Copy size={12} className="text-muted" />}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="text-center p-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+          <Activity size={12} className="text-accent-cyan mx-auto mb-1" />
+          <div className="text-lg font-bold tabular-nums">{limits?.apiCurrent ?? 0}</div>
+          <div className="text-[9px] text-muted">API 24h</div>
+        </div>
+        <div className="text-center p-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+          <Download size={12} className="text-accent-emerald mx-auto mb-1" />
+          <div className="text-lg font-bold tabular-nums">{limits?.grabCurrent ?? 0}</div>
+          <div className="text-[9px] text-muted">Grabs 24h</div>
+        </div>
+        <div className="text-center p-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+          <Database size={12} className="text-accent-purple mx-auto mb-1" />
+          <div className="text-lg font-bold tabular-nums">{user?.grabs?.toLocaleString("de-DE") ?? 0}</div>
+          <div className="text-[9px] text-muted">Grabs Total</div>
+        </div>
       </div>
 
-      {/* Grabs Remaining - big visual bar */}
+      {/* Downloads Limit Bar */}
       {limits && limits.grabMax > 0 && (
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <Download size={16} className="text-accent-emerald" />
-            <span className="font-semibold text-sm">
-              Downloads (24h Limit)
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium flex items-center gap-1.5">
+              <Download size={12} className="text-accent-emerald" />
+              Downloads
+            </span>
+            <span className="text-xs tabular-nums">
+              <span className="font-semibold">{grabsRemaining}</span>
+              <span className="text-muted"> / {limits.grabMax} frei</span>
             </span>
           </div>
-
-          <div className="grid grid-cols-3 gap-4 mb-5">
-            <BigNumber
-              value={limits.grabCurrent.toString()}
-              label="Verbraucht"
-              color="text-accent-amber"
-            />
-            <BigNumber
-              value={grabsRemaining !== null ? grabsRemaining.toString() : "∞"}
-              label="Verbleibend"
-              color={
-                grabsPercent > 90
-                  ? "text-accent-red"
-                  : grabsPercent > 70
-                  ? "text-accent-amber"
-                  : "text-accent-emerald"
-              }
-            />
-            <BigNumber
-              value={limits.grabMax.toString()}
-              label="Limit"
-              color="text-muted"
-            />
-          </div>
-
-          {/* Big progress bar */}
-          <div className="relative h-6 rounded-full bg-white/[0.05] overflow-hidden">
+          <div className="relative h-5 rounded-full bg-white/[0.05] overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-700 ${
                 grabsPercent > 90
-                  ? "bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_20px_-4px_rgba(239,68,68,0.6)]"
+                  ? "bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_15px_-4px_rgba(239,68,68,0.5)]"
                   : grabsPercent > 70
-                  ? "bg-gradient-to-r from-amber-600 to-amber-400 shadow-[0_0_20px_-4px_rgba(245,158,11,0.6)]"
-                  : "bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-[0_0_20px_-4px_rgba(16,185,129,0.6)]"
+                  ? "bg-gradient-to-r from-amber-600 to-amber-400 shadow-[0_0_15px_-4px_rgba(245,158,11,0.5)]"
+                  : "bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-[0_0_15px_-4px_rgba(16,185,129,0.5)]"
               }`}
               style={{ width: `${Math.min(grabsPercent, 100)}%` }}
             />
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-xs font-bold drop-shadow-lg">
-                {grabsPercent.toFixed(0)}% verbraucht
-              </span>
+              <span className="text-[10px] font-bold drop-shadow-lg">{grabsPercent.toFixed(0)}%</span>
             </div>
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* API Limit */}
+      {/* API Limit Bar */}
       {limits && limits.apiMax > 0 && (
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <Activity size={16} className="text-accent-cyan" />
-            <span className="font-semibold text-sm">API Requests (24h Limit)</span>
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium flex items-center gap-1.5">
+              <Activity size={12} className="text-accent-cyan" />
+              API Requests
+            </span>
+            <span className="text-xs tabular-nums">
+              <span className="font-semibold">{limits.apiMax - limits.apiCurrent}</span>
+              <span className="text-muted"> / {limits.apiMax} frei</span>
+            </span>
           </div>
-
-          {(() => {
-            const apiPercent = (limits.apiCurrent / limits.apiMax) * 100;
-            const apiRemaining = limits.apiMax - limits.apiCurrent;
-            return (
-              <>
-                <div className="grid grid-cols-3 gap-4 mb-5">
-                  <BigNumber
-                    value={limits.apiCurrent.toString()}
-                    label="Verbraucht"
-                    color="text-accent-amber"
-                  />
-                  <BigNumber
-                    value={apiRemaining.toString()}
-                    label="Verbleibend"
-                    color={
-                      apiPercent > 90
-                        ? "text-accent-red"
-                        : apiPercent > 70
-                        ? "text-accent-amber"
-                        : "text-accent-cyan"
-                    }
-                  />
-                  <BigNumber
-                    value={limits.apiMax.toString()}
-                    label="Limit"
-                    color="text-muted"
-                  />
-                </div>
-                <div className="relative h-6 rounded-full bg-white/[0.05] overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ${
-                      apiPercent > 90
-                        ? "bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_20px_-4px_rgba(239,68,68,0.6)]"
-                        : apiPercent > 70
-                        ? "bg-gradient-to-r from-amber-600 to-amber-400 shadow-[0_0_20px_-4px_rgba(245,158,11,0.6)]"
-                        : "bg-gradient-to-r from-cyan-600 to-cyan-400 shadow-[0_0_20px_-4px_rgba(34,211,238,0.6)]"
-                    }`}
-                    style={{ width: `${Math.min(apiPercent, 100)}%` }}
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-bold drop-shadow-lg">
-                      {apiPercent.toFixed(0)}% verbraucht
-                    </span>
-                  </div>
-                </div>
-              </>
-            );
-          })()}
-        </Card>
+          <div className="relative h-5 rounded-full bg-white/[0.05] overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${
+                apiPercent > 90
+                  ? "bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_15px_-4px_rgba(239,68,68,0.5)]"
+                  : apiPercent > 70
+                  ? "bg-gradient-to-r from-amber-600 to-amber-400 shadow-[0_0_15px_-4px_rgba(245,158,11,0.5)]"
+                  : "bg-gradient-to-r from-cyan-600 to-cyan-400 shadow-[0_0_15px_-4px_rgba(34,211,238,0.5)]"
+              }`}
+              style={{ width: `${Math.min(apiPercent, 100)}%` }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-[10px] font-bold drop-shadow-lg">{apiPercent.toFixed(0)}%</span>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Unlimited notice */}
       {limits && limits.apiMax === 0 && limits.grabMax === 0 && (
-        <Card>
-          <div className="text-center py-4">
-            <span className="text-2xl mb-2 block">∞</span>
-            <span className="text-sm text-muted">
-              API & Downloads sind unlimited auf diesem Account
-            </span>
-          </div>
-        </Card>
+        <div className="text-center py-2 text-xs text-muted">
+          ∞ API & Downloads unlimited
+        </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -762,48 +617,3 @@ function UserInfoRow({
   );
 }
 
-function StatBox({
-  icon,
-  label,
-  value,
-  max,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  max?: string;
-}) {
-  return (
-    <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] text-center">
-      <div className="flex items-center justify-center gap-1.5 mb-2">
-        {icon}
-        <span className="text-[10px] text-muted uppercase tracking-wider">
-          {label}
-        </span>
-      </div>
-      <div className="flex items-baseline justify-center gap-1">
-        <span className="text-2xl font-bold tabular-nums">{value}</span>
-        {max && (
-          <span className="text-xs text-muted">/ {max}</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function BigNumber({
-  value,
-  label,
-  color,
-}: {
-  value: string;
-  label: string;
-  color: string;
-}) {
-  return (
-    <div className="text-center">
-      <div className={`text-3xl font-bold tabular-nums ${color}`}>{value}</div>
-      <div className="text-xs text-muted mt-1">{label}</div>
-    </div>
-  );
-}
