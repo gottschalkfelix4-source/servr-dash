@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { StatusDot } from "@/components/ui/StatusDot";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Spinner } from "@/components/ui/Spinner";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
@@ -19,6 +18,13 @@ import {
   Trash2,
   Save,
   X,
+  Mail,
+  Calendar,
+  Clock,
+  Crown,
+  Shield,
+  Copy,
+  Check,
 } from "lucide-react";
 
 interface IndexerData {
@@ -28,11 +34,14 @@ interface IndexerData {
   error?: string;
   user: {
     username: string;
+    email: string;
     grabs: number;
     role: string;
     apiRequests: number;
     downloadRequests: number;
     createdAt: string;
+    lastLogin: string;
+    expiresAt: string;
   } | null;
   limits: {
     apiCurrent: number;
@@ -46,7 +55,7 @@ interface IndexerData {
     serverTitle: string;
     email: string;
     retention: number;
-    categories: { id: string; name: string; subCategories?: { id: string; name: string }[] }[];
+    categories: { id: string; name: string }[];
     searchAvailable: boolean;
     tvSearchAvailable: boolean;
     movieSearchAvailable: boolean;
@@ -60,7 +69,9 @@ export default function IndexerPage() {
   const [indexers, setIndexers] = useState<IndexerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [configIndexers, setConfigIndexers] = useState<{ name: string; url: string; apiKey: string }[]>([]);
+  const [configIndexers, setConfigIndexers] = useState<
+    { name: string; url: string; apiKey: string }[]
+  >([]);
 
   const loadData = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -107,7 +118,10 @@ export default function IndexerPage() {
             disabled={refreshing}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-cyan/10 text-accent-cyan text-sm font-medium hover:bg-accent-cyan/20 transition-colors disabled:opacity-50"
           >
-            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            <RefreshCw
+              size={14}
+              className={refreshing ? "animate-spin" : ""}
+            />
             Aktualisieren
           </button>
         )}
@@ -115,13 +129,19 @@ export default function IndexerPage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-6">
-        <button className={tabClass("dashboard")} onClick={() => setTab("dashboard")}>
+        <button
+          className={tabClass("dashboard")}
+          onClick={() => setTab("dashboard")}
+        >
           <span className="flex items-center gap-2">
             <Activity size={14} />
             Dashboard
           </span>
         </button>
-        <button className={tabClass("settings")} onClick={() => setTab("settings")}>
+        <button
+          className={tabClass("settings")}
+          onClick={() => setTab("settings")}
+        >
           <span className="flex items-center gap-2">
             <Settings size={14} />
             Einstellungen
@@ -132,6 +152,7 @@ export default function IndexerPage() {
       {tab === "dashboard" && (
         <DashboardTab
           indexers={indexers}
+          configIndexers={configIndexers}
           loading={loading}
           onSwitchToSettings={() => setTab("settings")}
         />
@@ -154,10 +175,12 @@ export default function IndexerPage() {
 
 function DashboardTab({
   indexers,
+  configIndexers,
   loading,
   onSwitchToSettings,
 }: {
   indexers: IndexerData[];
+  configIndexers: { name: string; url: string; apiKey: string }[];
   loading: boolean;
   onSwitchToSettings: () => void;
 }) {
@@ -174,7 +197,9 @@ function DashboardTab({
       <Card>
         <div className="text-center py-12">
           <Database size={48} className="mx-auto text-muted mb-4" />
-          <h3 className="text-lg font-medium mb-2">Keine Indexer konfiguriert</h3>
+          <h3 className="text-lg font-medium mb-2">
+            Keine Indexer konfiguriert
+          </h3>
           <p className="text-sm text-muted mb-4">
             Füge Indexer über die Einstellungen hinzu.
           </p>
@@ -191,10 +216,348 @@ function DashboardTab({
   }
 
   return (
-    <div className="space-y-6">
-      {indexers.map((indexer) => (
-        <IndexerCard key={indexer.url} indexer={indexer} />
+    <div className="space-y-8">
+      {indexers.map((indexer, idx) => (
+        <IndexerDashboard
+          key={indexer.url}
+          indexer={indexer}
+          apiKey={configIndexers[idx]?.apiKey || ""}
+        />
       ))}
+    </div>
+  );
+}
+
+// --- Indexer Dashboard (main visual) ---
+
+function IndexerDashboard({
+  indexer,
+  apiKey,
+}: {
+  indexer: IndexerData;
+  apiKey: string;
+}) {
+  const { user, limits } = indexer;
+  const [copied, setCopied] = useState(false);
+
+  const copyKey = () => {
+    navigator.clipboard.writeText(apiKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (!indexer.online) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-accent-red/10 flex items-center justify-center">
+              <Database size={20} className="text-accent-red" />
+            </div>
+            <div>
+              <CardTitle>{indexer.name}</CardTitle>
+              <span className="text-xs text-muted">{indexer.url}</span>
+            </div>
+          </div>
+          <StatusDot status="offline" />
+        </CardHeader>
+        <div className="p-3 rounded-lg bg-accent-red/10 text-accent-red text-sm">
+          Nicht erreichbar{indexer.error ? `: ${indexer.error}` : ""}
+        </div>
+      </Card>
+    );
+  }
+
+  const grabsRemaining = limits
+    ? limits.grabMax > 0
+      ? limits.grabMax - limits.grabCurrent
+      : null
+    : null;
+  const grabsPercent = limits && limits.grabMax > 0
+    ? (limits.grabCurrent / limits.grabMax) * 100
+    : 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-lg bg-accent-amber/10 flex items-center justify-center shadow-[0_0_12px_-3px_rgba(251,191,36,0.3)]">
+          <Database size={20} className="text-accent-amber" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-lg">{indexer.name}</h3>
+          <span className="text-xs text-muted">{indexer.url}</span>
+        </div>
+        <StatusDot status="online" />
+      </div>
+
+      {/* Top Row: User Info + API & Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* User Info Card */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <User size={16} className="text-accent-cyan" />
+            <span className="font-semibold text-sm text-accent-cyan">
+              User Info
+            </span>
+          </div>
+          <div className="space-y-3">
+            {user?.username && (
+              <UserInfoRow
+                icon={<User size={13} />}
+                label="Username"
+                value={user.username}
+              />
+            )}
+            {user?.email && (
+              <UserInfoRow
+                icon={<Mail size={13} />}
+                label="Email"
+                value={user.email}
+                verified
+              />
+            )}
+            {user?.createdAt && (
+              <UserInfoRow
+                icon={<Calendar size={13} />}
+                label="Registriert"
+                value={user.createdAt}
+              />
+            )}
+            {user?.lastLogin && (
+              <UserInfoRow
+                icon={<Clock size={13} />}
+                label="Letzter Login"
+                value={user.lastLogin}
+              />
+            )}
+            {user?.role && (
+              <UserInfoRow
+                icon={<Crown size={13} />}
+                label="Rolle"
+                value={
+                  <Badge
+                    variant={
+                      user.role.toLowerCase().includes("supporter") ||
+                      user.role.toLowerCase().includes("vip")
+                        ? "warning"
+                        : "default"
+                    }
+                  >
+                    {user.role}
+                  </Badge>
+                }
+              />
+            )}
+            {user?.expiresAt && (
+              <UserInfoRow
+                icon={<Shield size={13} />}
+                label="Läuft ab"
+                value={
+                  <span className="text-accent-emerald font-medium">
+                    {user.expiresAt}
+                  </span>
+                }
+              />
+            )}
+          </div>
+        </Card>
+
+        {/* API & Stats Card */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <Key size={16} className="text-accent-red" />
+            <span className="font-semibold text-sm text-accent-red">
+              API & Stats
+            </span>
+          </div>
+
+          {/* API Key */}
+          {apiKey && (
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] mb-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <Key size={13} className="text-muted flex-shrink-0" />
+                <span className="text-xs text-muted">Site API / RSS Key</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="text-xs text-accent-cyan font-mono truncate max-w-[180px]">
+                  {apiKey}
+                </code>
+                <button
+                  onClick={copyKey}
+                  className="p-1 rounded hover:bg-white/[0.08] transition-colors"
+                  title="Kopieren"
+                >
+                  {copied ? (
+                    <Check size={13} className="text-accent-emerald" />
+                  ) : (
+                    <Copy size={13} className="text-muted" />
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-3 gap-3">
+            <StatBox
+              icon={<Activity size={14} className="text-accent-cyan" />}
+              label="API (24h rolling)"
+              value={limits?.apiCurrent?.toString() || "0"}
+              max={
+                limits?.apiMax
+                  ? limits.apiMax > 0
+                    ? limits.apiMax.toString()
+                    : "∞"
+                  : "–"
+              }
+            />
+            <StatBox
+              icon={<Download size={14} className="text-accent-emerald" />}
+              label="Grabs (24h rolling)"
+              value={limits?.grabCurrent?.toString() || "0"}
+              max={
+                limits?.grabMax
+                  ? limits.grabMax > 0
+                    ? limits.grabMax.toString()
+                    : "∞"
+                  : "–"
+              }
+            />
+            <StatBox
+              icon={<Database size={14} className="text-accent-purple" />}
+              label="Grabs Total"
+              value={user?.grabs?.toLocaleString("de-DE") || "0"}
+            />
+          </div>
+        </Card>
+      </div>
+
+      {/* Grabs Remaining - big visual bar */}
+      {limits && limits.grabMax > 0 && (
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <Download size={16} className="text-accent-emerald" />
+            <span className="font-semibold text-sm">
+              Downloads (24h Limit)
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mb-5">
+            <BigNumber
+              value={limits.grabCurrent.toString()}
+              label="Verbraucht"
+              color="text-accent-amber"
+            />
+            <BigNumber
+              value={grabsRemaining !== null ? grabsRemaining.toString() : "∞"}
+              label="Verbleibend"
+              color={
+                grabsPercent > 90
+                  ? "text-accent-red"
+                  : grabsPercent > 70
+                  ? "text-accent-amber"
+                  : "text-accent-emerald"
+              }
+            />
+            <BigNumber
+              value={limits.grabMax.toString()}
+              label="Limit"
+              color="text-muted"
+            />
+          </div>
+
+          {/* Big progress bar */}
+          <div className="relative h-6 rounded-full bg-white/[0.05] overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${
+                grabsPercent > 90
+                  ? "bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_20px_-4px_rgba(239,68,68,0.6)]"
+                  : grabsPercent > 70
+                  ? "bg-gradient-to-r from-amber-600 to-amber-400 shadow-[0_0_20px_-4px_rgba(245,158,11,0.6)]"
+                  : "bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-[0_0_20px_-4px_rgba(16,185,129,0.6)]"
+              }`}
+              style={{ width: `${Math.min(grabsPercent, 100)}%` }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-bold drop-shadow-lg">
+                {grabsPercent.toFixed(0)}% verbraucht
+              </span>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* API Limit */}
+      {limits && limits.apiMax > 0 && (
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <Activity size={16} className="text-accent-cyan" />
+            <span className="font-semibold text-sm">API Requests (24h Limit)</span>
+          </div>
+
+          {(() => {
+            const apiPercent = (limits.apiCurrent / limits.apiMax) * 100;
+            const apiRemaining = limits.apiMax - limits.apiCurrent;
+            return (
+              <>
+                <div className="grid grid-cols-3 gap-4 mb-5">
+                  <BigNumber
+                    value={limits.apiCurrent.toString()}
+                    label="Verbraucht"
+                    color="text-accent-amber"
+                  />
+                  <BigNumber
+                    value={apiRemaining.toString()}
+                    label="Verbleibend"
+                    color={
+                      apiPercent > 90
+                        ? "text-accent-red"
+                        : apiPercent > 70
+                        ? "text-accent-amber"
+                        : "text-accent-cyan"
+                    }
+                  />
+                  <BigNumber
+                    value={limits.apiMax.toString()}
+                    label="Limit"
+                    color="text-muted"
+                  />
+                </div>
+                <div className="relative h-6 rounded-full bg-white/[0.05] overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      apiPercent > 90
+                        ? "bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_20px_-4px_rgba(239,68,68,0.6)]"
+                        : apiPercent > 70
+                        ? "bg-gradient-to-r from-amber-600 to-amber-400 shadow-[0_0_20px_-4px_rgba(245,158,11,0.6)]"
+                        : "bg-gradient-to-r from-cyan-600 to-cyan-400 shadow-[0_0_20px_-4px_rgba(34,211,238,0.6)]"
+                    }`}
+                    style={{ width: `${Math.min(apiPercent, 100)}%` }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs font-bold drop-shadow-lg">
+                      {apiPercent.toFixed(0)}% verbraucht
+                    </span>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </Card>
+      )}
+
+      {/* Unlimited notice */}
+      {limits && limits.apiMax === 0 && limits.grabMax === 0 && (
+        <Card>
+          <div className="text-center py-4">
+            <span className="text-2xl mb-2 block">∞</span>
+            <span className="text-sm text-muted">
+              API & Downloads sind unlimited auf diesem Account
+            </span>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
@@ -219,7 +582,9 @@ function SettingsTab({
     setIndexers(configIndexers);
   }, [configIndexers]);
 
-  const saveAll = async (updated: { name: string; url: string; apiKey: string }[]) => {
+  const saveAll = async (
+    updated: { name: string; url: string; apiKey: string }[]
+  ) => {
     setSaving(true);
     try {
       const configRes = await fetch("/api/config");
@@ -238,7 +603,10 @@ function SettingsTab({
 
   const handleAdd = async () => {
     if (!newName || !newUrl || !newApiKey) return;
-    const updated = [...indexers, { name: newName, url: newUrl.replace(/\/$/, ""), apiKey: newApiKey }];
+    const updated = [
+      ...indexers,
+      { name: newName, url: newUrl.replace(/\/$/, ""), apiKey: newApiKey },
+    ];
     await saveAll(updated);
     setNewName("");
     setNewUrl("");
@@ -247,7 +615,8 @@ function SettingsTab({
   };
 
   const handleRemove = async (idx: number) => {
-    if (!confirm(`Indexer "${indexers[idx].name}" wirklich entfernen?`)) return;
+    if (!confirm(`Indexer "${indexers[idx].name}" wirklich entfernen?`))
+      return;
     await saveAll(indexers.filter((_, i) => i !== idx));
   };
 
@@ -268,10 +637,10 @@ function SettingsTab({
       </CardHeader>
 
       <p className="text-xs text-muted mb-4">
-        Newznab-kompatible Usenet Indexer. API Key findest du auf der Profilseite deines Indexers.
+        Newznab-kompatible Usenet Indexer. API Key findest du auf der
+        Profilseite deines Indexers.
       </p>
 
-      {/* Add form */}
       {adding && (
         <div className="p-4 rounded-lg border border-white/[0.06] bg-card backdrop-blur-xl mb-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
@@ -314,7 +683,12 @@ function SettingsTab({
               {saving ? "Speichern..." : "Hinzufügen"}
             </button>
             <button
-              onClick={() => { setAdding(false); setNewName(""); setNewUrl(""); setNewApiKey(""); }}
+              onClick={() => {
+                setAdding(false);
+                setNewName("");
+                setNewUrl("");
+                setNewApiKey("");
+              }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/[0.08] text-sm hover:bg-white/[0.04] transition-colors"
             >
               <X size={14} />
@@ -324,7 +698,6 @@ function SettingsTab({
         </div>
       )}
 
-      {/* Indexer list */}
       <div className="space-y-2">
         {indexers.map((indexer, idx) => (
           <div
@@ -351,7 +724,8 @@ function SettingsTab({
         ))}
         {indexers.length === 0 && !adding && (
           <div className="text-center py-8 text-sm text-muted">
-            Noch keine Indexer konfiguriert. Klicke &quot;Hinzuf&uuml;gen&quot; um zu starten.
+            Noch keine Indexer konfiguriert. Klicke &quot;Hinzuf&uuml;gen&quot;
+            um zu starten.
           </div>
         )}
       </div>
@@ -359,179 +733,77 @@ function SettingsTab({
   );
 }
 
-// --- Indexer Card ---
+// --- UI Components ---
 
-function IndexerCard({ indexer }: { indexer: IndexerData }) {
-  const { user, limits, caps } = indexer;
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-accent-amber/10 flex items-center justify-center shadow-[0_0_12px_-3px_rgba(251,191,36,0.3)]">
-            <Database size={20} className="text-accent-amber" />
-          </div>
-          <div>
-            <CardTitle>{indexer.name}</CardTitle>
-            <span className="text-xs text-muted">{indexer.url}</span>
-          </div>
-        </div>
-        <StatusDot status={indexer.online ? "online" : "offline"} />
-      </CardHeader>
-
-      {!indexer.online && (
-        <div className="p-3 rounded-lg bg-accent-red/10 text-accent-red text-sm">
-          Nicht erreichbar{indexer.error ? `: ${indexer.error}` : ""}
-        </div>
-      )}
-
-      {indexer.online && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {user && (
-              <div className="p-4 rounded-lg bg-white/[0.02] border border-white/[0.04]">
-                <div className="flex items-center gap-2 mb-3">
-                  <User size={14} className="text-accent-cyan" />
-                  <span className="text-sm font-medium">Account</span>
-                </div>
-                <div className="space-y-2">
-                  <InfoRow label="Username" value={user.username} />
-                  <InfoRow
-                    label="Rolle"
-                    value={
-                      <Badge variant={user.role === "Supporter" ? "warning" : "default"}>
-                        {user.role}
-                      </Badge>
-                    }
-                  />
-                  <InfoRow label="Grabs Total" value={user.grabs.toLocaleString("de-DE")} highlight />
-                  {user.createdAt && (
-                    <InfoRow label="Registriert" value={user.createdAt} />
-                  )}
-                </div>
-              </div>
-            )}
-
-            {limits && (
-              <div className="p-4 rounded-lg bg-white/[0.02] border border-white/[0.04]">
-                <div className="flex items-center gap-2 mb-3">
-                  <Key size={14} className="text-accent-purple" />
-                  <span className="text-sm font-medium">API & Stats</span>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <Activity size={12} className="text-accent-cyan" />
-                        <span className="text-xs text-muted">API (24h)</span>
-                      </div>
-                      <span className="text-xs font-mono">
-                        {limits.apiCurrent}
-                        {limits.apiMax > 0 ? ` / ${limits.apiMax}` : " / \u221e"}
-                      </span>
-                    </div>
-                    {limits.apiMax > 0 && (
-                      <ProgressBar
-                        value={limits.apiCurrent}
-                        max={limits.apiMax}
-                        color={
-                          limits.apiCurrent / limits.apiMax > 0.9
-                            ? "red"
-                            : limits.apiCurrent / limits.apiMax > 0.7
-                            ? "amber"
-                            : "cyan"
-                        }
-                      />
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <Download size={12} className="text-accent-emerald" />
-                        <span className="text-xs text-muted">Downloads (24h)</span>
-                      </div>
-                      <span className="text-xs font-mono">
-                        {limits.grabCurrent}
-                        {limits.grabMax > 0 ? ` / ${limits.grabMax}` : " / \u221e"}
-                      </span>
-                    </div>
-                    {limits.grabMax > 0 && (
-                      <ProgressBar
-                        value={limits.grabCurrent}
-                        max={limits.grabMax}
-                        color={
-                          limits.grabCurrent / limits.grabMax > 0.9
-                            ? "red"
-                            : limits.grabCurrent / limits.grabMax > 0.7
-                            ? "amber"
-                            : "emerald"
-                        }
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {caps && (
-            <div className="p-4 rounded-lg bg-white/[0.02] border border-white/[0.04]">
-              <div className="flex items-center gap-2 mb-3">
-                <Database size={14} className="text-accent-amber" />
-                <span className="text-sm font-medium">Server</span>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {caps.serverTitle && (
-                  <MiniStat label="Server" value={caps.serverTitle} />
-                )}
-                {caps.retention > 0 && (
-                  <MiniStat label="Retention" value={`${caps.retention} Tage`} />
-                )}
-                <MiniStat label="Kategorien" value={caps.categories.length.toString()} />
-                <MiniStat
-                  label="Suchen"
-                  value={[
-                    caps.searchAvailable && "NZB",
-                    caps.tvSearchAvailable && "TV",
-                    caps.movieSearchAvailable && "Film",
-                  ]
-                    .filter(Boolean)
-                    .join(", ") || "Keine"}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function InfoRow({
+function UserInfoRow({
+  icon,
   label,
   value,
-  highlight,
+  verified,
 }: {
+  icon: React.ReactNode;
   label: string;
   value: React.ReactNode;
-  highlight?: boolean;
+  verified?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-muted">{label}</span>
-      <span className={`text-xs ${highlight ? "font-semibold text-accent-cyan" : ""}`}>
-        {value}
-      </span>
+    <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04] last:border-0">
+      <div className="flex items-center gap-2 text-muted">
+        {icon}
+        <span className="text-xs">{label}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm">{value}</span>
+        {verified && (
+          <Check size={13} className="text-accent-emerald" />
+        )}
+      </div>
     </div>
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
+function StatBox({
+  icon,
+  label,
+  value,
+  max,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  max?: string;
+}) {
   return (
-    <div className="text-center p-2 rounded-lg bg-white/[0.02]">
-      <div className="text-sm font-medium">{value}</div>
-      <div className="text-[10px] text-muted mt-0.5">{label}</div>
+    <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] text-center">
+      <div className="flex items-center justify-center gap-1.5 mb-2">
+        {icon}
+        <span className="text-[10px] text-muted uppercase tracking-wider">
+          {label}
+        </span>
+      </div>
+      <div className="flex items-baseline justify-center gap-1">
+        <span className="text-2xl font-bold tabular-nums">{value}</span>
+        {max && (
+          <span className="text-xs text-muted">/ {max}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BigNumber({
+  value,
+  label,
+  color,
+}: {
+  value: string;
+  label: string;
+  color: string;
+}) {
+  return (
+    <div className="text-center">
+      <div className={`text-3xl font-bold tabular-nums ${color}`}>{value}</div>
+      <div className="text-xs text-muted mt-1">{label}</div>
     </div>
   );
 }

@@ -6,11 +6,14 @@ export interface IndexerConfig {
 
 export interface IndexerUser {
   username: string;
+  email: string;
   grabs: number;
   role: string;
   apiRequests: number;
   downloadRequests: number;
   createdAt: string;
+  lastLogin: string;
+  expiresAt: string;
 }
 
 export interface IndexerLimits {
@@ -87,11 +90,14 @@ export async function fetchIndexerStats(config: IndexerConfig): Promise<IndexerS
       if (userAttrs.username) {
         result.user = {
           username: userAttrs.username || "",
+          email: userAttrs.email || "",
           grabs: parseInt(userAttrs.grabs || "0"),
           role: userAttrs.role || userAttrs.rolename || "",
           apiRequests: parseInt(userAttrs.apirequests || "0"),
           downloadRequests: parseInt(userAttrs.downloadrequests || "0"),
           createdAt: userAttrs.createddate || userAttrs.createdAt || "",
+          lastLogin: userAttrs.lastlogindate || "",
+          expiresAt: userAttrs.expiredate || userAttrs.expiresAt || "",
         };
       }
 
