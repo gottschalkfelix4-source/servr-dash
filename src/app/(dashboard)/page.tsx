@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   Clock,
   ArrowRight,
+  Database,
 } from "lucide-react";
 import Link from "next/link";
 import useSWR from "swr";
@@ -65,6 +66,9 @@ export default function DashboardOverview() {
     refreshInterval: 60000,
   });
   const { data: sonarrStatus } = useSWR("/api/sonarr/status", fetcher, {
+    refreshInterval: 60000,
+  });
+  const { data: indexerData } = useSWR("/api/indexer", fetcher, {
     refreshInterval: 60000,
   });
 
@@ -368,6 +372,92 @@ export default function DashboardOverview() {
               >
                 +{totalQueue - 10} weitere anzeigen
               </Link>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Indexer Grabs ── */}
+      {indexerData?.indexers?.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <Database size={16} className="text-accent-amber mr-2 inline" />
+              Indexer
+            </CardTitle>
+            <Link href="/indexer" className="text-xs text-muted hover:text-accent-cyan transition-colors flex items-center gap-1">
+              Details <ArrowRight size={12} />
+            </Link>
+          </CardHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {indexerData.indexers.map(
+              (idx: {
+                name: string;
+                online: boolean;
+                limits?: {
+                  grabCurrent: number;
+                  grabMax: number;
+                  apiCurrent: number;
+                  apiMax: number;
+                };
+                user?: { grabs: number };
+              }) => {
+                if (!idx.online) return (
+                  <div key={idx.name} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <StatusDot status="offline" />
+                      <span className="text-sm font-medium">{idx.name}</span>
+                    </div>
+                    <span className="text-xs text-accent-red">Offline</span>
+                  </div>
+                );
+
+                const grabMax = idx.limits?.grabMax || 0;
+                const grabCurrent = idx.limits?.grabCurrent || 0;
+                const grabsLeft = grabMax > 0 ? grabMax - grabCurrent : null;
+                const grabPercent = grabMax > 0 ? (grabCurrent / grabMax) * 100 : 0;
+
+                return (
+                  <Link key={idx.name} href="/indexer" className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <StatusDot status="online" />
+                        <span className="text-sm font-medium">{idx.name}</span>
+                      </div>
+                      <span className="text-xs text-muted">
+                        {(idx.user?.grabs || 0).toLocaleString("de-DE")} total
+                      </span>
+                    </div>
+                    {grabMax > 0 ? (
+                      <>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] text-muted">Downloads 24h</span>
+                          <span className="text-[10px] tabular-nums font-medium">
+                            <span className={grabPercent > 90 ? "text-accent-red" : grabPercent > 70 ? "text-accent-amber" : "text-accent-emerald"}>
+                              {grabsLeft}
+                            </span>
+                            <span className="text-muted"> / {grabMax} frei</span>
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-white/[0.05] overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              grabPercent > 90
+                                ? "bg-gradient-to-r from-red-600 to-red-400"
+                                : grabPercent > 70
+                                ? "bg-gradient-to-r from-amber-600 to-amber-400"
+                                : "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                            }`}
+                            style={{ width: `${Math.min(grabPercent, 100)}%` }}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-[10px] text-muted">∞ Downloads unlimited</div>
+                    )}
+                  </Link>
+                );
+              }
             )}
           </div>
         </Card>
