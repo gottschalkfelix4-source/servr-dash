@@ -377,59 +377,6 @@ export default function DashboardOverview() {
         </Card>
       )}
 
-      {/* ── Upcoming Calendar ── */}
-      {(rCalendar.length > 0 || sCalendar.length > 0) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <Calendar size={16} className="text-accent-amber mr-2 inline" />
-              Kommende Releases
-            </CardTitle>
-            <span className="text-xs text-muted">Nächste 7 Tage</span>
-          </CardHeader>
-          <div className="space-y-2">
-            {rCalendar.slice(0, 5).map(
-              (item: {
-                id: number;
-                title: string;
-                year: number;
-                digitalRelease?: string;
-                physicalRelease?: string;
-                inCinemas?: string;
-              }) => {
-                const date =
-                  item.digitalRelease || item.physicalRelease || item.inCinemas;
-                return (
-                  <CalendarRow
-                    key={`r-${item.id}`}
-                    title={`${item.title} (${item.year})`}
-                    date={date || ""}
-                    type="film"
-                  />
-                );
-              }
-            )}
-            {sCalendar.slice(0, 5).map(
-              (item: {
-                id: number;
-                title: string;
-                seasonNumber: number;
-                episodeNumber: number;
-                airDateUtc?: string;
-                series?: { title: string };
-              }) => (
-                <CalendarRow
-                  key={`s-${item.id}`}
-                  title={`${item.series?.title || ""} S${pad(item.seasonNumber)}E${pad(item.episodeNumber)} — ${item.title}`}
-                  date={item.airDateUtc || ""}
-                  type="series"
-                />
-              )
-            )}
-          </div>
-        </Card>
-      )}
-
       {/* ── Indexer Grabs ── */}
       {indexerData?.indexers?.length > 0 && (
         <Card>
@@ -515,6 +462,60 @@ export default function DashboardOverview() {
           </div>
         </Card>
       )}
+
+      {/* ── Upcoming Calendar ── */}
+      {(rCalendar.length > 0 || sCalendar.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <Calendar size={16} className="text-accent-amber mr-2 inline" />
+              Kommende Releases
+            </CardTitle>
+            <span className="text-xs text-muted">Nächste 7 Tage</span>
+          </CardHeader>
+          <div className="space-y-2">
+            {rCalendar.slice(0, 5).map(
+              (item: {
+                id: number;
+                title: string;
+                year: number;
+                digitalRelease?: string;
+                physicalRelease?: string;
+                inCinemas?: string;
+              }) => {
+                const date =
+                  item.digitalRelease || item.physicalRelease || item.inCinemas;
+                return (
+                  <CalendarRow
+                    key={`r-${item.id}`}
+                    title={`${item.title} (${item.year})`}
+                    date={date || ""}
+                    type="film"
+                  />
+                );
+              }
+            )}
+            {sCalendar.slice(0, 5).map(
+              (item: {
+                id: number;
+                title: string;
+                seasonNumber: number;
+                episodeNumber: number;
+                airDateUtc?: string;
+                series?: { title: string };
+              }) => (
+                <CalendarRow
+                  key={`s-${item.id}`}
+                  title={`${item.series?.title || ""} S${pad(item.seasonNumber)}E${pad(item.episodeNumber)} — ${item.title}`}
+                  date={item.airDateUtc || ""}
+                  type="series"
+                />
+              )
+            )}
+          </div>
+        </Card>
+      )}
+
     </div>
   );
 }
