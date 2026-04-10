@@ -1,6 +1,8 @@
 export type RcloneHealthStatus = "online" | "warning" | "offline" | "unknown";
 export type RcloneTransferStatus = "running" | "success" | "error" | "stopped";
 export type RcloneMountMode = "ro" | "rw" | "unknown";
+export type RcloneMountSource = "manual" | "discovered";
+export type RcloneMountDiscoveryMethod = "rc" | "ssh";
 
 export interface RcloneMountConfig {
   id: string;
@@ -8,6 +10,19 @@ export interface RcloneMountConfig {
   path: string;
   remoteName?: string;
   mode?: RcloneMountMode;
+}
+
+export interface RcloneDiscoveredMount {
+  path: string;
+  label: string;
+  remoteName?: string;
+  mode?: RcloneMountMode;
+  discoveredBy: RcloneMountDiscoveryMethod;
+}
+
+export interface RcloneResolvedMount extends RcloneMountConfig {
+  source: RcloneMountSource;
+  discoveredBy?: RcloneMountDiscoveryMethod;
 }
 
 export interface RcloneProfileConfig {
@@ -68,6 +83,8 @@ export interface RcloneMountStatus {
   path: string;
   remoteName?: string;
   mode?: RcloneMountMode;
+  source: RcloneMountSource;
+  discoveredBy?: RcloneMountDiscoveryMethod;
   status: RcloneHealthStatus;
   isMounted: boolean;
   lastChecked: number;

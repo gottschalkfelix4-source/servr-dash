@@ -38,6 +38,7 @@ function createServerMissingSnapshot(profile: RcloneProfileConfig): RcloneCollec
     path: mount.path,
     remoteName: mount.remoteName,
     mode: mount.mode,
+    source: "manual" as const,
     status: "offline" as const,
     isMounted: false,
     lastChecked: checkedAt,

@@ -2,15 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HardDrive, Plus, RefreshCw, Save, Trash2, Waypoints, X } from "lucide-react";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Spinner } from "@/components/ui/Spinner";
 import { RcloneStatusBadge } from "@/components/rclone/RcloneStatusBadge";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Spinner } from "@/components/ui/Spinner";
 import type { AppConfig, ServerConfig } from "@/types/server";
-import type { RcloneMountConfig, RcloneProfileConfig, RcloneProfileStatus } from "@/types/rclone";
+import type {
+  RcloneMountConfig,
+  RcloneMountStatus,
+  RcloneProfileConfig,
+  RcloneProfileStatus,
+} from "@/types/rclone";
 
 const inputClass =
-  "w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent-cyan/50 focus:shadow-[0_0_15px_-5px_rgba(34,211,238,0.3)] transition-all duration-200";
+  "w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm transition-all duration-200 focus:border-accent-cyan/50 focus:shadow-[0_0_15px_-5px_rgba(34,211,238,0.3)] focus:outline-none";
 
 const emptyProfile: RcloneProfileConfig = {
   id: "",
@@ -21,6 +26,15 @@ const emptyProfile: RcloneProfileConfig = {
   mounts: [],
 };
 
+function normalizeMountPath(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "/") {
+    return trimmed || "/";
+  }
+
+  return trimmed.replace(/\/+$/, "");
+}
+
 function createMount(): RcloneMountConfig {
   return {
     id: crypto.randomUUID(),
@@ -30,10 +44,23 @@ function createMount(): RcloneMountConfig {
   };
 }
 
+function createMountFromStatus(mount: RcloneMountStatus): RcloneMountConfig {
+  return {
+    id: crypto.randomUUID(),
+    label: mount.label,
+    path: mount.path,
+    remoteName: mount.remoteName,
+    mode: mount.mode || "unknown",
+  };
+}
+
 export function RcloneSettings() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [profiles, setProfiles] = useState<RcloneProfileConfig[]>([]);
   const [statuses, setStatuses] = useState<Record<string, RcloneProfileStatus>>({});
+  const [discoveredMounts, setDiscoveredMounts] = useState<
+    Record<string, RcloneMountStatus[]>
+  >({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,6 +80,7 @@ export function RcloneSettings() {
         setStatuses({});
         return;
       }
+
       const data = await response.json();
       const mapped = Object.fromEntries(
         (data.profiles || []).map((profile: RcloneProfileStatus) => [profile.id, profile])
@@ -63,18 +91,48 @@ export function RcloneSettings() {
     }
   }, []);
 
+  const loadMounts = useCallback(async () => {
+    try {
+      const response = await fetch("/api/rclone/mounts");
+      if (!response.ok) {
+        setDiscoveredMounts({});
+        return;
+      }
+
+      const data = await response.json();
+      const grouped = (data.mounts || []).reduce(
+        (acc: Record<string, RcloneMountStatus[]>, mount: RcloneMountStatus) => {
+          if (mount.source !== "discovered") {
+            return acc;
+          }
+
+          acc[mount.profileId] = [...(acc[mount.profileId] || []), mount];
+          return acc;
+        },
+        {}
+      );
+      setDiscoveredMounts(grouped);
+    } catch {
+      setDiscoveredMounts({});
+    }
+  }, []);
+
   useEffect(() => {
-    void loadConfig();
-    void loadStatuses();
-  }, [loadConfig, loadStatuses]);
+    void Promise.all([loadConfig(), loadStatuses(), loadMounts()]);
+  }, [loadConfig, loadMounts, loadStatuses]);
 
   const serverMap = useMemo(
     () => new Map((config?.servers || []).map((server: ServerConfig) => [server.id, server])),
     [config]
   );
 
+  async function refreshRcloneViews() {
+    await Promise.all([loadStatuses(), loadMounts()]);
+  }
+
   async function saveProfiles(nextProfiles: RcloneProfileConfig[]) {
     if (!config) return;
+
     setSaving(true);
     try {
       const nextConfig = {
@@ -83,14 +141,16 @@ export function RcloneSettings() {
           profiles: nextProfiles,
         },
       };
+
       await fetch("/api/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(nextConfig),
       });
+
       setConfig(nextConfig);
       setProfiles(nextProfiles);
-      await loadStatuses();
+      await refreshRcloneViews();
     } finally {
       setSaving(false);
     }
@@ -111,7 +171,7 @@ export function RcloneSettings() {
           ...mount,
           id: mount.id || crypto.randomUUID(),
           label: mount.label.trim(),
-          path: mount.path.trim(),
+          path: normalizeMountPath(mount.path),
           remoteName: mount.remoteName?.trim() || undefined,
           mode: mount.mode || "unknown",
         })),
@@ -140,7 +200,7 @@ export function RcloneSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profileId }),
       });
-      await loadStatuses();
+      await refreshRcloneViews();
     } finally {
       setTestingId(null);
     }
@@ -165,15 +225,16 @@ export function RcloneSettings() {
             setAdding(true);
             setEditingId(null);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-cyan/10 text-accent-cyan text-sm font-medium hover:bg-accent-cyan/20 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-accent-cyan/10 px-3 py-1.5 text-sm font-medium text-accent-cyan transition-colors hover:bg-accent-cyan/20"
         >
           <Plus size={14} />
-          Profil hinzufügen
+          Profil hinzufuegen
         </button>
       </CardHeader>
 
-      <p className="text-xs text-muted mb-4">
-        Rclone-Profile hängen an vorhandenen SSH-Servern und sammeln RC-Status, Mount-Checks und Transferdaten.
+      <p className="mb-4 text-xs text-muted">
+        Rclone-Profile haengen an vorhandenen SSH-Servern und sammeln RC-Status,
+        Transferdaten sowie automatisch erkannte Mounts.
       </p>
 
       {(config.servers || []).length === 0 && (
@@ -188,28 +249,36 @@ export function RcloneSettings() {
           onCancel={() => setAdding(false)}
           onSave={handleSaveProfile}
           saving={saving}
+          discoveredMounts={[]}
         />
       )}
 
       <div className="space-y-3">
-        {profiles.map((profile) =>
-          editingId === profile.id ? (
-            <RcloneProfileForm
-              key={profile.id}
-              profile={profile}
-              servers={config.servers || []}
-              onCancel={() => setEditingId(null)}
-              onSave={handleSaveProfile}
-              saving={saving}
-            />
-          ) : (
+        {profiles.map((profile) => {
+          const detectedMounts = discoveredMounts[profile.id] || [];
+
+          if (editingId === profile.id) {
+            return (
+              <RcloneProfileForm
+                key={profile.id}
+                profile={profile}
+                servers={config.servers || []}
+                onCancel={() => setEditingId(null)}
+                onSave={handleSaveProfile}
+                saving={saving}
+                discoveredMounts={detectedMounts}
+              />
+            );
+          }
+
+          return (
             <div
               key={profile.id}
               className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4"
             >
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{profile.name}</span>
                     <Badge variant={profile.enabled ? "success" : "default"}>
                       {profile.enabled ? "Aktiv" : "Deaktiviert"}
@@ -218,18 +287,22 @@ export function RcloneSettings() {
                       <RcloneStatusBadge status={statuses[profile.id].status} />
                     )}
                   </div>
-                  <div className="mt-1 text-xs text-muted space-y-1">
+                  <div className="mt-1 space-y-1 text-xs text-muted">
                     <div>
-                      Server: {serverMap.get(profile.serverId)?.name || profile.serverId || "—"}
+                      Server: {serverMap.get(profile.serverId)?.name || profile.serverId || "-"}
                     </div>
                     <div>
-                      RC: {profile.rcUrl || `http://${serverMap.get(profile.serverId)?.host || "server"}:${profile.rcPort || 5572}`}
+                      RC:{" "}
+                      {profile.rcUrl ||
+                        `http://${serverMap.get(profile.serverId)?.host || "server"}:${profile.rcPort || 5572}`}
                     </div>
-                    <div>{profile.mounts.length} Mounts hinterlegt</div>
+                    <div>
+                      {profile.mounts.length} manuell, {detectedMounts.length} automatisch gefunden
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => handleTestProfile(profile.id)}
                     disabled={testingId === profile.id}
@@ -259,7 +332,7 @@ export function RcloneSettings() {
               </div>
 
               {profile.mounts.length > 0 && (
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
                   {profile.mounts.map((mount) => (
                     <div
                       key={mount.id}
@@ -269,14 +342,14 @@ export function RcloneSettings() {
                         <HardDrive size={14} className="text-accent-cyan" />
                         {mount.label}
                       </div>
-                      <div className="text-xs text-muted mt-1 font-mono">{mount.path}</div>
+                      <div className="mt-1 text-xs font-mono text-muted">{mount.path}</div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          )
-        )}
+          );
+        })}
 
         {profiles.length === 0 && !adding && (
           <div className="py-8 text-center text-sm text-muted">
@@ -294,16 +367,23 @@ function RcloneProfileForm({
   onSave,
   onCancel,
   saving,
+  discoveredMounts,
 }: {
   profile?: RcloneProfileConfig;
   servers: ServerConfig[];
   onSave: (profile: RcloneProfileConfig) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
+  discoveredMounts: RcloneMountStatus[];
 }) {
-  const [form, setForm] = useState<RcloneProfileConfig>(
-    profile || { ...emptyProfile, mounts: [] }
-  );
+  const [form, setForm] = useState<RcloneProfileConfig>(profile || { ...emptyProfile, mounts: [] });
+
+  const availableDiscoveredMounts = useMemo(() => {
+    const existingPaths = new Set(form.mounts.map((mount) => normalizeMountPath(mount.path)));
+    return discoveredMounts.filter(
+      (mount) => !existingPaths.has(normalizeMountPath(mount.path))
+    );
+  }, [discoveredMounts, form.mounts]);
 
   function updateMount(mountId: string, patch: Partial<RcloneMountConfig>) {
     setForm((current) => ({
@@ -311,6 +391,13 @@ function RcloneProfileForm({
       mounts: current.mounts.map((mount) =>
         mount.id === mountId ? { ...mount, ...patch } : mount
       ),
+    }));
+  }
+
+  function adoptDiscoveredMount(mount: RcloneMountStatus) {
+    setForm((current) => ({
+      ...current,
+      mounts: [...current.mounts, createMountFromStatus(mount)],
     }));
   }
 
@@ -322,9 +409,9 @@ function RcloneProfileForm({
       }}
       className="rounded-lg border border-white/[0.06] bg-card p-4"
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+      <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
-          <label className="text-xs text-muted mb-1 block">Name</label>
+          <label className="mb-1 block text-xs text-muted">Name</label>
           <input
             className={inputClass}
             value={form.name}
@@ -334,14 +421,14 @@ function RcloneProfileForm({
           />
         </div>
         <div>
-          <label className="text-xs text-muted mb-1 block">Server</label>
+          <label className="mb-1 block text-xs text-muted">Server</label>
           <select
             className={inputClass}
             value={form.serverId}
             onChange={(event) => setForm({ ...form, serverId: event.target.value })}
             required
           >
-            <option value="">Server auswählen</option>
+            <option value="">Server auswaehlen</option>
             {servers.map((server) => (
               <option key={server.id} value={server.id}>
                 {server.name} ({server.host})
@@ -350,7 +437,7 @@ function RcloneProfileForm({
           </select>
         </div>
         <div>
-          <label className="text-xs text-muted mb-1 block">RC URL (optional)</label>
+          <label className="mb-1 block text-xs text-muted">RC URL (optional)</label>
           <input
             className={inputClass}
             value={form.rcUrl || ""}
@@ -359,19 +446,17 @@ function RcloneProfileForm({
           />
         </div>
         <div>
-          <label className="text-xs text-muted mb-1 block">RC Port</label>
+          <label className="mb-1 block text-xs text-muted">RC Port</label>
           <input
             className={inputClass}
             type="number"
             value={form.rcPort || 5572}
-            onChange={(event) =>
-              setForm({ ...form, rcPort: Number(event.target.value) || 5572 })
-            }
+            onChange={(event) => setForm({ ...form, rcPort: Number(event.target.value) || 5572 })}
             disabled={Boolean(form.rcUrl)}
           />
         </div>
         <div>
-          <label className="text-xs text-muted mb-1 block">Benutzername</label>
+          <label className="mb-1 block text-xs text-muted">Benutzername</label>
           <input
             className={inputClass}
             value={form.username || ""}
@@ -380,7 +465,7 @@ function RcloneProfileForm({
           />
         </div>
         <div>
-          <label className="text-xs text-muted mb-1 block">Passwort</label>
+          <label className="mb-1 block text-xs text-muted">Passwort</label>
           <input
             className={inputClass}
             type="password"
@@ -391,7 +476,7 @@ function RcloneProfileForm({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-4">
+      <div className="mb-4 flex items-center gap-2">
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -402,24 +487,24 @@ function RcloneProfileForm({
         </label>
       </div>
 
-      <div className="rounded-lg border border-white/[0.06] bg-black/10 p-4 mb-4">
-        <div className="flex items-center justify-between mb-3">
+      <div className="mb-4 rounded-lg border border-white/[0.06] bg-black/10 p-4">
+        <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Waypoints size={15} className="text-accent-cyan" />
-            <span className="text-sm font-medium">Erwartete Mounts</span>
+            <span className="text-sm font-medium">Manuelle Mounts</span>
           </div>
           <button
             type="button"
             onClick={() => setForm({ ...form, mounts: [...form.mounts, createMount()] })}
             className="text-xs text-accent-cyan hover:underline"
           >
-            + Mount hinzufügen
+            + Mount hinzufuegen
           </button>
         </div>
 
         <div className="space-y-3">
           {form.mounts.map((mount) => (
-            <div key={mount.id} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div key={mount.id} className="grid grid-cols-1 gap-3 md:grid-cols-4">
               <input
                 className={inputClass}
                 value={mount.label}
@@ -470,7 +555,64 @@ function RcloneProfileForm({
 
           {form.mounts.length === 0 && (
             <div className="text-xs text-muted">
-              Noch keine Mount-Pfade hinterlegt. Ohne Mounts bleibt das Profil ein reines RC-Monitoring.
+              Noch keine manuellen Mount-Pfade hinterlegt. Ohne Eintraege arbeitet das Profil
+              nur mit automatisch erkannten Mounts.
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="mb-4 rounded-lg border border-white/[0.06] bg-black/10 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <HardDrive size={15} className="text-accent-cyan" />
+            <span className="text-sm font-medium">Gefundene Mounts</span>
+          </div>
+          <Badge variant="default">{availableDiscoveredMounts.length}</Badge>
+        </div>
+
+        <p className="mb-3 text-xs text-muted">
+          Nach einem Verbindungstest erscheinen hier automatisch erkannte Mounts aus RC und SSH.
+          Du kannst sie mit einem Klick in die manuelle Profilkonfiguration uebernehmen.
+        </p>
+
+        <div className="space-y-3">
+          {availableDiscoveredMounts.map((mount) => (
+            <div
+              key={`${mount.profileId}-${mount.mountId}`}
+              className="flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 md:flex-row md:items-center md:justify-between"
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{mount.label}</span>
+                  <Badge variant="info">Gefunden</Badge>
+                  {mount.discoveredBy && (
+                    <Badge variant="default">{mount.discoveredBy.toUpperCase()}</Badge>
+                  )}
+                  <RcloneStatusBadge status={mount.status} />
+                </div>
+                <div className="mt-1 text-xs font-mono text-muted">{mount.path}</div>
+                {mount.remoteName && (
+                  <div className="mt-1 text-xs text-muted">Remote: {mount.remoteName}</div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => adoptDiscoveredMount(mount)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-accent-cyan/30 px-3 py-2 text-xs font-medium text-accent-cyan hover:bg-accent-cyan/10"
+              >
+                <Plus size={13} />
+                Uebernehmen
+              </button>
+            </div>
+          ))}
+
+          {availableDiscoveredMounts.length === 0 && (
+            <div className="text-xs text-muted">
+              {profile
+                ? "Noch keine neuen Mounts gefunden. Starte einen Verbindungstest, um Discovery-Daten zu laden."
+                : "Discovery-Daten werden verfuegbar, sobald das Profil gespeichert und getestet wurde."}
             </div>
           )}
         </div>

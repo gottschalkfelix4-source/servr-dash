@@ -2,6 +2,7 @@
 
 import { RefreshCw } from "lucide-react";
 import { RcloneStatusBadge } from "@/components/rclone/RcloneStatusBadge";
+import { Badge } from "@/components/ui/Badge";
 import type { RcloneMountStatus } from "@/types/rclone";
 
 export function RcloneMountTable({
@@ -22,26 +23,42 @@ export function RcloneMountTable({
             <th className="px-3 py-2.5">Mount</th>
             <th className="px-3 py-2.5">Pfad</th>
             <th className="px-3 py-2.5">Remote</th>
+            <th className="px-3 py-2.5">Quelle</th>
             <th className="px-3 py-2.5">Host</th>
-            <th className="px-3 py-2.5">Zuletzt geprüft</th>
+            <th className="px-3 py-2.5">Zuletzt geprueft</th>
             <th className="px-3 py-2.5" />
           </tr>
         </thead>
         <tbody>
           {mounts.map((mount) => (
-            <tr key={`${mount.profileId}-${mount.mountId}`} className="border-b border-white/[0.04]">
+            <tr
+              key={`${mount.profileId}-${mount.mountId}`}
+              className="border-b border-white/[0.04]"
+            >
               <td className="px-3 py-3 align-top">
                 <RcloneStatusBadge status={mount.status} />
               </td>
               <td className="px-3 py-3 align-top">
                 <div className="font-medium">{mount.label}</div>
                 {mount.error && (
-                  <div className="text-xs text-accent-amber mt-1">{mount.error}</div>
+                  <div className="mt-1 text-xs text-accent-amber">{mount.error}</div>
                 )}
               </td>
-              <td className="px-3 py-3 align-top font-mono text-xs text-muted">{mount.path}</td>
-              <td className="px-3 py-3 align-top">{mount.remoteName || "—"}</td>
-              <td className="px-3 py-3 align-top">{mount.serverName || "—"}</td>
+              <td className="px-3 py-3 align-top font-mono text-xs text-muted">
+                {mount.path}
+              </td>
+              <td className="px-3 py-3 align-top">{mount.remoteName || "-"}</td>
+              <td className="px-3 py-3 align-top">
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant={mount.source === "manual" ? "default" : "info"}>
+                    {mount.source === "manual" ? "Manuell" : "Gefunden"}
+                  </Badge>
+                  {mount.source === "discovered" && mount.discoveredBy && (
+                    <Badge variant="default">{mount.discoveredBy.toUpperCase()}</Badge>
+                  )}
+                </div>
+              </td>
+              <td className="px-3 py-3 align-top">{mount.serverName || "-"}</td>
               <td className="px-3 py-3 align-top text-xs text-muted">
                 {new Date(mount.lastChecked).toLocaleString("de-DE")}
               </td>

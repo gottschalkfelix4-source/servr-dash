@@ -39,7 +39,7 @@ class RclonePollingScheduler {
     const profiles = getRcloneProfiles();
     const activeProfiles = profiles.filter((profile) => profile.enabled);
     const selectedProfiles = profileId
-      ? activeProfiles.filter((profile) => profile.id === profileId)
+      ? profiles.filter((profile) => profile.id === profileId)
       : activeProfiles;
 
     const activeProfileIds = new Set(activeProfiles.map((profile) => profile.id));
