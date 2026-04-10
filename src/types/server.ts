@@ -1,3 +1,5 @@
+import type { RcloneConfig } from "@/types/rclone";
+
 export interface ServerConfig {
   id: string;
   name: string;
@@ -93,6 +95,7 @@ export interface AppConfig {
   };
   tmdbApiKey?: string;
   indexers?: { name: string; url: string; apiKey: string }[];
+  rclone?: RcloneConfig;
   openclaw?: {
     url: string;
     authMethod?: "none" | "token" | "password";

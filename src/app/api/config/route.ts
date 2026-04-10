@@ -2,43 +2,65 @@ import { NextResponse } from "next/server";
 import { getConfig, saveConfig } from "@/lib/config";
 import type { AppConfig } from "@/types/server";
 
-// Mask sensitive fields before sending to frontend
+const MASKED_SECRET = "••••••••";
+
 function sanitizeConfig(config: AppConfig): Record<string, unknown> {
   return {
-    servers: config.servers.map((s) => ({
-      ...s,
-      password: s.password ? "••••••••" : undefined,
-      privateKeyPath: s.privateKeyPath || undefined,
+    servers: config.servers.map((server) => ({
+      ...server,
+      password: server.password ? MASKED_SECRET : undefined,
+      privateKeyPath: server.privateKeyPath || undefined,
     })),
     plex: {
       url: config.plex.url,
-      token: config.plex.token ? "••••••••" : undefined,
+      token: config.plex.token ? MASKED_SECRET : undefined,
       clientId: config.plex.clientId,
     },
     radarr: config.radarr
-      ? { url: config.radarr.url, apiKey: config.radarr.apiKey ? "••••••••" : undefined }
+      ? {
+          url: config.radarr.url,
+          apiKey: config.radarr.apiKey ? MASKED_SECRET : undefined,
+        }
       : undefined,
     sonarr: config.sonarr
-      ? { url: config.sonarr.url, apiKey: config.sonarr.apiKey ? "••••••••" : undefined }
+      ? {
+          url: config.sonarr.url,
+          apiKey: config.sonarr.apiKey ? MASKED_SECRET : undefined,
+        }
       : undefined,
     cloudflare: config.cloudflare
-      ? { apiToken: config.cloudflare.apiToken ? "••••••••" : undefined }
+      ? {
+          apiToken: config.cloudflare.apiToken ? MASKED_SECRET : undefined,
+        }
       : undefined,
     synology: config.synology
-      ? { url: config.synology.url, username: config.synology.username, password: "••••••••" }
+      ? {
+          url: config.synology.url,
+          username: config.synology.username,
+          password: MASKED_SECRET,
+        }
       : undefined,
-    indexers: (config.indexers || []).map((i) => ({
-      name: i.name,
-      url: i.url,
-      apiKey: i.apiKey ? "••••••••" : undefined,
+    indexers: (config.indexers || []).map((indexer) => ({
+      name: indexer.name,
+      url: indexer.url,
+      apiKey: indexer.apiKey ? MASKED_SECRET : undefined,
     })),
-    tmdbApiKey: config.tmdbApiKey ? "••••••••" : undefined,
+    rclone: config.rclone
+      ? {
+          profiles: config.rclone.profiles.map((profile) => ({
+            ...profile,
+            password: profile.password ? MASKED_SECRET : undefined,
+            mounts: profile.mounts || [],
+          })),
+        }
+      : undefined,
+    tmdbApiKey: config.tmdbApiKey ? MASKED_SECRET : undefined,
     openclaw: config.openclaw
       ? {
           url: config.openclaw.url,
           authMethod: config.openclaw.authMethod || "none",
-          token: config.openclaw.token ? "••••••••" : undefined,
-          password: config.openclaw.password ? "••••••••" : undefined,
+          token: config.openclaw.token ? MASKED_SECRET : undefined,
+          password: config.openclaw.password ? MASKED_SECRET : undefined,
           model: config.openclaw.model,
         }
       : undefined,
@@ -46,8 +68,7 @@ function sanitizeConfig(config: AppConfig): Record<string, unknown> {
 }
 
 export async function GET() {
-  const config = getConfig();
-  return NextResponse.json(sanitizeConfig(config));
+  return NextResponse.json(sanitizeConfig(getConfig()));
 }
 
 export async function PUT(request: Request) {
@@ -55,40 +76,42 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const existing = getConfig();
 
-    // Merge: only update fields that are not masked placeholders
     const merged: AppConfig = {
       ...existing,
       servers: body.servers
-        ? body.servers.map((s: Record<string, unknown>) => {
-            const existingServer = existing.servers.find((es) => es.id === s.id);
+        ? body.servers.map((server: Record<string, unknown>) => {
+            const existingServer = existing.servers.find(
+              (item) => item.id === server.id
+            );
+
             return {
-              ...s,
-              // Keep existing password/key if masked value was sent back
+              ...server,
               password:
-                s.password === "••••••••" ? existingServer?.password : s.password,
+                server.password === MASKED_SECRET
+                  ? existingServer?.password
+                  : server.password,
               privateKeyPath:
-                s.privateKeyPath === undefined
+                server.privateKeyPath === undefined
                   ? existingServer?.privateKeyPath
-                  : s.privateKeyPath,
+                  : server.privateKeyPath,
             };
           })
         : existing.servers,
       plex: {
         url: body.plex?.url || existing.plex.url,
         token:
-          body.plex?.token === "••••••••"
+          body.plex?.token === MASKED_SECRET
             ? existing.plex.token
             : body.plex?.token ?? existing.plex.token,
         clientId: existing.plex.clientId,
       },
     };
 
-    // Radarr
     if (body.radarr) {
       merged.radarr = {
         url: body.radarr.url,
         apiKey:
-          body.radarr.apiKey === "••••••••"
+          body.radarr.apiKey === MASKED_SECRET
             ? existing.radarr?.apiKey || ""
             : body.radarr.apiKey,
       };
@@ -96,12 +119,11 @@ export async function PUT(request: Request) {
       merged.radarr = existing.radarr;
     }
 
-    // Sonarr
     if (body.sonarr) {
       merged.sonarr = {
         url: body.sonarr.url,
         apiKey:
-          body.sonarr.apiKey === "••••••••"
+          body.sonarr.apiKey === MASKED_SECRET
             ? existing.sonarr?.apiKey || ""
             : body.sonarr.apiKey,
       };
@@ -109,11 +131,10 @@ export async function PUT(request: Request) {
       merged.sonarr = existing.sonarr;
     }
 
-    // Cloudflare
     if (body.cloudflare) {
       merged.cloudflare = {
         apiToken:
-          body.cloudflare.apiToken === "••••••••"
+          body.cloudflare.apiToken === MASKED_SECRET
             ? existing.cloudflare?.apiToken || ""
             : body.cloudflare.apiToken,
       };
@@ -121,13 +142,12 @@ export async function PUT(request: Request) {
       merged.cloudflare = existing.cloudflare;
     }
 
-    // Synology
     if (body.synology) {
       merged.synology = {
         url: body.synology.url,
         username: body.synology.username,
         password:
-          body.synology.password === "••••••••"
+          body.synology.password === MASKED_SECRET
             ? existing.synology?.password || ""
             : body.synology.password,
       };
@@ -135,33 +155,91 @@ export async function PUT(request: Request) {
       merged.synology = existing.synology;
     }
 
-    // Indexers
     if (body.indexers) {
       merged.indexers = body.indexers.map(
-        (i: { name: string; url: string; apiKey: string }, idx: number) => ({
-          name: i.name,
-          url: i.url,
+        (indexer: { name: string; url: string; apiKey: string }, idx: number) => ({
+          name: indexer.name,
+          url: indexer.url,
           apiKey:
-            i.apiKey === "••••••••"
+            indexer.apiKey === MASKED_SECRET
               ? existing.indexers?.[idx]?.apiKey || ""
-              : i.apiKey,
+              : indexer.apiKey,
         })
       );
     } else if (body.indexers === undefined && existing.indexers) {
       merged.indexers = existing.indexers;
     }
 
-    // OpenClaw
+    if (body.rclone) {
+      merged.rclone = {
+        profiles: (body.rclone.profiles || []).map(
+          (profile: Record<string, unknown>) => {
+            const existingProfile = existing.rclone?.profiles.find(
+              (item) => item.id === profile.id
+            );
+
+            return {
+              id: String(profile.id || ""),
+              name: String(profile.name || ""),
+              serverId: String(profile.serverId || ""),
+              enabled: Boolean(profile.enabled),
+              rcUrl:
+                typeof profile.rcUrl === "string" && profile.rcUrl
+                  ? profile.rcUrl
+                  : undefined,
+              rcPort:
+                typeof profile.rcPort === "number"
+                  ? profile.rcPort
+                  : typeof profile.rcPort === "string" && profile.rcPort
+                  ? Number(profile.rcPort)
+                  : undefined,
+              username:
+                typeof profile.username === "string" && profile.username
+                  ? profile.username
+                  : undefined,
+              password:
+                profile.password === MASKED_SECRET
+                  ? existingProfile?.password
+                  : typeof profile.password === "string" && profile.password
+                  ? profile.password
+                  : undefined,
+              label:
+                typeof profile.label === "string" && profile.label
+                  ? profile.label
+                  : undefined,
+              mounts: Array.isArray(profile.mounts)
+                ? profile.mounts.map((mount: Record<string, unknown>) => ({
+                    id: String(mount.id || ""),
+                    label: String(mount.label || ""),
+                    path: String(mount.path || ""),
+                    remoteName:
+                      typeof mount.remoteName === "string" && mount.remoteName
+                        ? mount.remoteName
+                        : undefined,
+                    mode:
+                      mount.mode === "ro" || mount.mode === "rw"
+                        ? mount.mode
+                        : "unknown",
+                  }))
+                : [],
+            };
+          }
+        ),
+      };
+    } else if (body.rclone === undefined && existing.rclone) {
+      merged.rclone = existing.rclone;
+    }
+
     if (body.openclaw) {
       merged.openclaw = {
         url: body.openclaw.url,
         authMethod: body.openclaw.authMethod || "none",
         token:
-          body.openclaw.token === "••••••••"
+          body.openclaw.token === MASKED_SECRET
             ? existing.openclaw?.token
             : body.openclaw.token,
         password:
-          body.openclaw.password === "••••••••"
+          body.openclaw.password === MASKED_SECRET
             ? existing.openclaw?.password
             : body.openclaw.password,
         model: body.openclaw.model,
@@ -170,10 +248,9 @@ export async function PUT(request: Request) {
       merged.openclaw = existing.openclaw;
     }
 
-    // TMDB
     if (body.tmdbApiKey !== undefined) {
       merged.tmdbApiKey =
-        body.tmdbApiKey === "••••••••"
+        body.tmdbApiKey === MASKED_SECRET
           ? existing.tmdbApiKey
           : body.tmdbApiKey;
     }

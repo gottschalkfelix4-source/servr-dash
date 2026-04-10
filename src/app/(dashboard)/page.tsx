@@ -4,10 +4,9 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Badge } from "@/components/ui/Badge";
-import { Spinner } from "@/components/ui/Spinner";
+import { RcloneSummaryCard } from "@/components/rclone/RcloneSummaryCard";
 import {
   Server,
-  Container,
   Tv,
   Film,
   Clapperboard,
@@ -21,6 +20,7 @@ import {
   Clock,
   ArrowRight,
   Database,
+  Waypoints,
 } from "lucide-react";
 import Link from "next/link";
 import useSWR from "swr";
@@ -71,6 +71,9 @@ export default function DashboardOverview() {
   const { data: indexerData } = useSWR("/api/indexer", fetcher, {
     refreshInterval: 60000,
   });
+  const { data: rcloneData } = useSWR("/api/rclone/overview", fetcher, {
+    refreshInterval: 10000,
+  });
 
   const servers = serversData?.servers || [];
   const movies = radarrMovies || [];
@@ -112,11 +115,20 @@ export default function DashboardOverview() {
   );
 
   const totalQueue = rQueue.length + sQueue.length;
+  const rcloneOverview = rcloneData?.overview;
+  const rcloneStatus =
+    !rcloneOverview || rcloneOverview.profileCount === 0
+      ? "unknown"
+      : rcloneOverview.offlineProfiles > 0
+      ? "offline"
+      : rcloneOverview.warningProfiles > 0 || rcloneOverview.mountsDegraded > 0
+      ? "warning"
+      : "online";
 
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* ── Service Status Row ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         <ServiceStatusCard
           label="Server"
           href="/servers"
@@ -162,7 +174,30 @@ export default function DashboardOverview() {
           value={`${totalQueue}`}
           sub="in Queue"
         />
+        <ServiceStatusCard
+          label="Rclone"
+          href="/rclone"
+          icon={<Waypoints size={16} />}
+          color="cyan"
+          status={rcloneStatus}
+          value={
+            rcloneOverview?.profileCount
+              ? rcloneStatus === "online"
+                ? "Online"
+                : rcloneStatus === "warning"
+                ? "Warnung"
+                : "Offline"
+              : "—"
+          }
+          sub={
+            rcloneOverview?.profileCount
+              ? `${rcloneOverview.mountsHealthy}/${rcloneOverview.mountsTotal} Mounts`
+              : "nicht konfiguriert"
+          }
+        />
       </div>
+
+      {rcloneOverview?.profileCount > 0 && <RcloneSummaryCard overview={rcloneOverview} />}
 
       {/* ── Active Streams ── */}
       {sessions.length > 0 && (

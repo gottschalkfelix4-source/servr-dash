@@ -26,6 +26,9 @@ import {
   Globe,
   Bot,
   Database,
+  Waypoints,
+  HardDrive,
+  ArrowRightLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -85,6 +88,15 @@ const navItems: NavItem[] = [
       { label: "Geräte", href: "/backups/devices", icon: <Monitor size={16} /> },
       { label: "Tasks", href: "/backups/tasks", icon: <ListChecks size={16} /> },
       { label: "Verlauf", href: "/backups/logs", icon: <ScrollText size={16} /> },
+    ],
+  },
+  {
+    label: "Rclone",
+    href: "/rclone",
+    icon: <Waypoints size={20} />,
+    children: [
+      { label: "Mounts", href: "/rclone/mounts", icon: <HardDrive size={16} /> },
+      { label: "Transfers", href: "/rclone/transfers", icon: <ArrowRightLeft size={16} /> },
     ],
   },
   {

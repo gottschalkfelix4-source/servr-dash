@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { Spinner } from "@/components/ui/Spinner";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { RcloneSettings } from "@/components/rclone/RcloneSettings";
 import {
   Server,
   Plus,
@@ -34,7 +35,7 @@ export default function SettingsPage() {
     <div>
       <PageHeader
         title="Einstellungen"
-        description="Server, Plex, Radarr & Sonarr Konfiguration"
+        description="Server, Plex, Rclone, Radarr & Sonarr Konfiguration"
       />
       <div className="space-y-6">
         <ServerSettings />
@@ -55,6 +56,7 @@ export default function SettingsPage() {
         />
         <CloudflareSettings />
         <SynologySettings />
+        <RcloneSettings />
         <TmdbSettings />
         <IndexerSettings />
         <OpenClawSettings />
@@ -410,15 +412,26 @@ function PlexSettings() {
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const checkAuth = useCallback(async () => {
-    const res = await fetch("/api/plex/auth");
-    const data = await res.json();
-    setAuthStatus(data);
-  }, []);
-
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    let cancelled = false;
+
+    fetch("/api/plex/auth")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) {
+          setAuthStatus(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAuthStatus({ hasToken: false });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const startLogin = async () => {
     setError(null);
