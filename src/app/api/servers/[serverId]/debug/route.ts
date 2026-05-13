@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getConfig } from "@/lib/config";
 import { sshPool } from "@/lib/ssh/connection-pool";
+import { execServerCommand, isLocalMetricsServer } from "@/lib/server-exec";
 
 export async function GET(
   _request: Request,
@@ -29,7 +30,7 @@ export async function GET(
 
   for (const [name, cmd] of Object.entries(commands)) {
     try {
-      results[name] = await sshPool.exec(server, cmd);
+      results[name] = await execServerCommand(server, cmd);
     } catch (err) {
       results[name] = `ERROR: ${err instanceof Error ? err.message : String(err)}`;
     }
@@ -50,14 +51,16 @@ export async function GET(
       "echo '___DELIM___'",
       "sleep 0.5 && cat /proc/stat | head -1",
     ].join(" && ");
-    results["batched"] = await sshPool.exec(server, batchCmd);
+    results["batched"] = await execServerCommand(server, batchCmd);
   } catch (err) {
     results["batched"] = `ERROR: ${err instanceof Error ? err.message : String(err)}`;
   }
 
   return NextResponse.json({
     server: { id: server.id, name: server.name, host: server.host },
-    connectionStatus: sshPool.getStatus(server.id),
+    connectionStatus: isLocalMetricsServer(server)
+      ? { connected: true, mode: "local" }
+      : sshPool.getStatus(server.id),
     results,
   });
 }

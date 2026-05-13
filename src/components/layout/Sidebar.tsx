@@ -19,16 +19,9 @@ import {
   Download,
   Calendar,
   Library,
-  Shield,
-  Monitor,
-  ListChecks,
-  ScrollText,
   Globe,
   Bot,
   Database,
-  Waypoints,
-  HardDrive,
-  ArrowRightLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -78,25 +71,6 @@ const navItems: NavItem[] = [
       { label: "Serien", href: "/sonarr/series", icon: <Library size={16} /> },
       { label: "Queue", href: "/sonarr/queue", icon: <Download size={16} /> },
       { label: "Kalender", href: "/sonarr/calendar", icon: <Calendar size={16} /> },
-    ],
-  },
-  {
-    label: "Backups",
-    href: "/backups",
-    icon: <Shield size={20} />,
-    children: [
-      { label: "Geräte", href: "/backups/devices", icon: <Monitor size={16} /> },
-      { label: "Tasks", href: "/backups/tasks", icon: <ListChecks size={16} /> },
-      { label: "Verlauf", href: "/backups/logs", icon: <ScrollText size={16} /> },
-    ],
-  },
-  {
-    label: "Rclone",
-    href: "/rclone",
-    icon: <Waypoints size={20} />,
-    children: [
-      { label: "Mounts", href: "/rclone/mounts", icon: <HardDrive size={16} /> },
-      { label: "Transfers", href: "/rclone/transfers", icon: <ArrowRightLeft size={16} /> },
     ],
   },
   {

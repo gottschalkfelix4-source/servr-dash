@@ -2,12 +2,13 @@
 
 import { memo, useMemo } from "react";
 import {
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   ResponsiveContainer,
   Tooltip,
+  Legend,
   CartesianGrid,
 } from "recharts";
 import type { TimestampedMetrics } from "@/types/server";
@@ -18,25 +19,32 @@ import {
   formatTooltipTime,
 } from "./chart-utils";
 
-interface CpuChartProps {
+interface GpuChartProps {
   data: TimestampedMetrics[];
   range?: MetricsRange;
   liveNow?: number;
   windowMs?: number;
 }
 
-export const CpuChart = memo(function CpuChart({
+export const GpuChart = memo(function GpuChart({
   data,
   range = "live",
   liveNow,
   windowMs = 180_000,
-}: CpuChartProps) {
+}: GpuChartProps) {
   const chartData = useMemo(
     () =>
-      data.map((d) => ({
-        timestamp: d.timestamp,
-        cpu: d.cpu,
-      })),
+      data
+        .filter(
+          (d) =>
+            typeof d.gpuPercent === "number" ||
+            typeof d.gpuMemoryPercent === "number"
+        )
+        .map((d) => ({
+          timestamp: d.timestamp,
+          gpu: d.gpuPercent ?? 0,
+          memory: d.gpuMemoryPercent ?? 0,
+        })),
     [data]
   );
 
@@ -44,21 +52,7 @@ export const CpuChart = memo(function CpuChart({
 
   return (
     <ResponsiveContainer width="100%" height={200}>
-      <AreaChart data={chartData}>
-        <defs>
-          <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.4} />
-            <stop offset="50%" stopColor="#22d3ee" stopOpacity={0.1} />
-            <stop offset="100%" stopColor="#22d3ee" stopOpacity={0} />
-          </linearGradient>
-          <filter id="cpuGlow">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
+      <LineChart data={chartData}>
         <CartesianGrid stroke="rgba(148, 163, 184, 0.08)" vertical={false} />
         <XAxis
           dataKey="timestamp"
@@ -83,21 +77,37 @@ export const CpuChart = memo(function CpuChart({
         <Tooltip
           contentStyle={{
             ...commonTooltipStyle,
-            boxShadow: "0 0 20px -5px rgba(34, 211, 238, 0.2)",
+            boxShadow: "0 0 20px -5px rgba(34, 211, 238, 0.15)",
           }}
           labelFormatter={(value) => formatTooltipTime(Number(value), range)}
-          formatter={(value) => [`${Number(value).toFixed(1)}%`, "CPU"]}
+          formatter={(value, name) => [
+            `${Number(value).toFixed(1)}%`,
+            name === "gpu" ? "GPU" : "VRAM",
+          ]}
         />
-        <Area
+        <Legend
+          formatter={(value) => (value === "gpu" ? "GPU" : "VRAM")}
+          wrapperStyle={{ fontSize: 12, color: "#94a3b8" }}
+        />
+        <Line
           type="monotone"
-          dataKey="cpu"
+          dataKey="gpu"
           stroke="#22d3ee"
           strokeWidth={2}
-          fill="url(#cpuGradient)"
-          filter="url(#cpuGlow)"
+          dot={false}
+          connectNulls
           isAnimationActive={false}
         />
-      </AreaChart>
+        <Line
+          type="monotone"
+          dataKey="memory"
+          stroke="#a78bfa"
+          strokeWidth={2}
+          dot={false}
+          connectNulls
+          isAnimationActive={false}
+        />
+      </LineChart>
     </ResponsiveContainer>
   );
 });

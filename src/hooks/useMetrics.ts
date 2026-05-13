@@ -1,5 +1,6 @@
 import useSWR from "swr";
 import type { ServerMetrics, TimestampedMetrics, ProcessInfo } from "@/types/server";
+import type { MetricsRange } from "@/lib/metrics-archive";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -9,24 +10,47 @@ const fetcher = async (url: string) => {
 
 const defaultOpts = {
   revalidateOnFocus: false,
-  dedupingInterval: 3000,
   errorRetryInterval: 5000,
   errorRetryCount: 60,
 };
 
-export function useServerMetrics(serverId: string) {
+export function useServerMetrics(serverId: string, refreshInterval = 5000) {
   return useSWR<{ metrics: ServerMetrics }>(
     `/api/servers/${serverId}/metrics`,
     fetcher,
-    { ...defaultOpts, refreshInterval: 5000 }
+    {
+      ...defaultOpts,
+      dedupingInterval: Math.min(refreshInterval, 1000),
+      refreshInterval,
+    }
   );
 }
 
-export function useServerHistory(serverId: string) {
-  return useSWR<{ history: TimestampedMetrics[] }>(
-    `/api/servers/${serverId}/history`,
+export function useServerMetricsMap() {
+  return useSWR<{ metrics: Record<string, ServerMetrics> }>(
+    "/api/servers/metrics",
     fetcher,
-    { ...defaultOpts, refreshInterval: 5000 }
+    { ...defaultOpts, dedupingInterval: 1000, refreshInterval: 1000 }
+  );
+}
+
+export function useServerHistory(
+  serverId: string,
+  range: MetricsRange = "live",
+  refreshIntervalOverride?: number
+) {
+  const baseRefreshInterval =
+    range === "live" ? 5000 : range === "24h" ? 60000 : 300000;
+  const refreshInterval = refreshIntervalOverride ?? baseRefreshInterval;
+
+  return useSWR<{ history: TimestampedMetrics[] }>(
+    `/api/servers/${serverId}/history?range=${range}&limit=180`,
+    fetcher,
+    {
+      ...defaultOpts,
+      dedupingInterval: Math.min(refreshInterval, 1000),
+      refreshInterval,
+    }
   );
 }
 

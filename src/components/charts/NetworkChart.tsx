@@ -9,37 +9,41 @@ import {
   ResponsiveContainer,
   Tooltip,
   Legend,
+  CartesianGrid,
 } from "recharts";
 import { formatBytes } from "@/lib/utils";
 import type { TimestampedMetrics } from "@/types/server";
+import type { MetricsRange } from "@/lib/metrics-archive";
+import {
+  commonTooltipStyle,
+  formatChartTime,
+  formatTooltipTime,
+} from "./chart-utils";
 
 interface NetworkChartProps {
   data: TimestampedMetrics[];
+  range?: MetricsRange;
+  liveNow?: number;
+  windowMs?: number;
 }
 
-const tooltipStyle = {
-  backgroundColor: "rgba(15, 23, 42, 0.9)",
-  backdropFilter: "blur(12px)",
-  border: "1px solid rgba(148, 163, 184, 0.1)",
-  borderRadius: "12px",
-  color: "#e2e8f0",
-  boxShadow: "0 0 20px -5px rgba(16, 185, 129, 0.15)",
-};
-
-export const NetworkChart = memo(function NetworkChart({ data }: NetworkChartProps) {
+export const NetworkChart = memo(function NetworkChart({
+  data,
+  range = "live",
+  liveNow,
+  windowMs = 180_000,
+}: NetworkChartProps) {
   const chartData = useMemo(
     () =>
       data.map((d) => ({
-        time: new Date(d.timestamp).toLocaleTimeString("de-DE", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }),
+        timestamp: d.timestamp,
         rx: d.rxBytesPerSec,
         tx: d.txBytesPerSec,
       })),
     [data]
   );
+
+  const hasLiveWindow = range === "live" && typeof liveNow === "number";
 
   return (
     <ResponsiveContainer width="100%" height={200}>
@@ -60,12 +64,18 @@ export const NetworkChart = memo(function NetworkChart({ data }: NetworkChartPro
             </feMerge>
           </filter>
         </defs>
+        <CartesianGrid stroke="rgba(148, 163, 184, 0.08)" vertical={false} />
         <XAxis
-          dataKey="time"
+          dataKey="timestamp"
+          type="number"
+          domain={hasLiveWindow ? [liveNow - windowMs, liveNow] : ["dataMin", "dataMax"]}
+          allowDataOverflow={hasLiveWindow}
           tick={{ fontSize: 10, fill: "#64748b" }}
           axisLine={false}
           tickLine={false}
           interval="preserveStartEnd"
+          minTickGap={28}
+          tickFormatter={(value) => formatChartTime(Number(value), range)}
         />
         <YAxis
           tick={{ fontSize: 10, fill: "#64748b" }}
@@ -75,7 +85,11 @@ export const NetworkChart = memo(function NetworkChart({ data }: NetworkChartPro
           width={70}
         />
         <Tooltip
-          contentStyle={tooltipStyle}
+          contentStyle={{
+            ...commonTooltipStyle,
+            boxShadow: "0 0 20px -5px rgba(16, 185, 129, 0.15)",
+          }}
+          labelFormatter={(value) => formatTooltipTime(Number(value), range)}
           formatter={(value, name) => [
             `${formatBytes(Number(value))}/s`,
             name === "rx" ? "Download" : "Upload",
@@ -92,6 +106,7 @@ export const NetworkChart = memo(function NetworkChart({ data }: NetworkChartPro
           strokeWidth={2}
           dot={false}
           filter="url(#netGlowGreen)"
+          connectNulls
           isAnimationActive={false}
         />
         <Line
@@ -101,6 +116,7 @@ export const NetworkChart = memo(function NetworkChart({ data }: NetworkChartPro
           strokeWidth={2}
           dot={false}
           filter="url(#netGlowAmber)"
+          connectNulls
           isAnimationActive={false}
         />
       </LineChart>

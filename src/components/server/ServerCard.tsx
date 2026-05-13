@@ -8,31 +8,25 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Server } from "lucide-react";
 import { formatUptime } from "@/lib/utils";
-import useSWR from "swr";
 import type { ServerMetrics } from "@/types/server";
-
-const fetcher = async (url: string) => {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${res.status}`);
-  return res.json();
-};
 
 interface ServerCardProps {
   id: string;
   name: string;
   host: string;
+  metrics?: ServerMetrics;
+  hasError?: boolean;
 }
 
-export function ServerCard({ id, name, host }: ServerCardProps) {
-  const { data, error } = useSWR<{ metrics: ServerMetrics }>(
-    `/api/servers/${id}/metrics`,
-    fetcher,
-    { refreshInterval: 5000, revalidateOnFocus: false }
-  );
-
-  const metrics = data?.metrics;
+export function ServerCard({
+  id,
+  name,
+  host,
+  metrics,
+  hasError = false,
+}: ServerCardProps) {
   const isOnline = !!metrics;
-  const hasError = !!error;
+  const primaryGpu = metrics?.gpus?.[0];
 
   return (
     <Link href={`/servers/${id}`}>
@@ -68,6 +62,17 @@ export function ServerCard({ id, name, host }: ServerCardProps) {
               </div>
               <ProgressBar value={metrics.ram.percent} color="purple" />
             </div>
+            {primaryGpu && (
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-muted">GPU</span>
+                  <span className="font-mono">
+                    {primaryGpu.utilization.toFixed(1)}%
+                  </span>
+                </div>
+                <ProgressBar value={primaryGpu.utilization} color="cyan" />
+              </div>
+            )}
             <div className="flex justify-between items-center pt-3 border-t border-white/[0.06]">
               <Badge variant="info">{metrics.os.name.split(" ")[0]}</Badge>
               <span className="text-xs text-muted font-mono">

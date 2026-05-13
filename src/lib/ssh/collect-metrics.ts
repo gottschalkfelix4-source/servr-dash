@@ -1,13 +1,15 @@
-import { sshPool } from "./connection-pool";
+import { execServerCommand } from "@/lib/server-exec";
 import {
   parseCpuUsage,
   parseRam,
   parseDisk,
   parseNetworkSnapshot,
   calculateNetworkRate,
+  parseGpuMetrics,
   parseUptime,
   parseOsInfo,
   parseProcesses,
+  SSH_COMMANDS,
   type NetworkSnapshot,
 } from "./commands";
 import type { ServerConfig, ServerMetrics, ProcessInfo } from "@/types/server";
@@ -29,6 +31,8 @@ const BATCHED_METRICS_CMD = [
   "echo '___DELIM___'",
   "cat /proc/net/dev",
   "echo '___DELIM___'",
+  SSH_COMMANDS.gpu,
+  "echo '___DELIM___'",
   "cat /proc/uptime",
   "echo '___DELIM___'",
   // Second CPU sample after a brief delay
@@ -36,7 +40,7 @@ const BATCHED_METRICS_CMD = [
 ].join(" && ");
 
 export async function collectMetrics(server: ServerConfig): Promise<ServerMetrics> {
-  const exec = (cmd: string) => sshPool.exec(server, cmd);
+  const exec = (cmd: string) => execServerCommand(server, cmd);
 
   // Single SSH exec for all metrics (instead of 7 separate calls)
   const batchedOutput = await exec(BATCHED_METRICS_CMD);
@@ -46,13 +50,15 @@ export async function collectMetrics(server: ServerConfig): Promise<ServerMetric
   const ramOut = parts[1] || "";
   const diskOut = parts[2] || "";
   const networkOut = parts[3] || "";
-  const uptimeOut = parts[4] || "";
-  const cpuSample2 = parts[5] || "";
+  const gpuOut = parts[4] || "";
+  const uptimeOut = parts[5] || "";
+  const cpuSample2 = parts[6] || "";
 
   // Parse everything
   const cpu = parseCpuUsage(cpuSample1, cpuSample2);
   const ram = parseRam(ramOut);
   const disk = parseDisk(diskOut);
+  const gpus = parseGpuMetrics(gpuOut);
   const uptime = parseUptime(uptimeOut);
 
   // OS info: use cache (rarely changes)
@@ -92,6 +98,7 @@ export async function collectMetrics(server: ServerConfig): Promise<ServerMetric
     ram,
     disk,
     network,
+    gpus,
     uptime,
     os: os.data,
     timestamp: now,
@@ -99,6 +106,9 @@ export async function collectMetrics(server: ServerConfig): Promise<ServerMetric
 }
 
 export async function collectProcesses(server: ServerConfig): Promise<ProcessInfo[]> {
-  const output = await sshPool.exec(server, "ps aux --sort=-%cpu | head -26");
+  const output = await execServerCommand(
+    server,
+    "ps aux --sort=-%cpu | head -26"
+  );
   return parseProcesses(output);
 }

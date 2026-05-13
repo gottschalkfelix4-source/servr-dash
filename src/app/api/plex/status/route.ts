@@ -4,6 +4,6 @@ import { plexClient } from "@/lib/plex/client";
 export async function GET() {
   const status = await plexClient.getStatus();
   return NextResponse.json(status, {
-    headers: { "Cache-Control": "private, max-age=5, stale-while-revalidate=5" },
+    headers: { "Cache-Control": "private, no-store" },
   });
 }

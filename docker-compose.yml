@@ -3,11 +3,15 @@ services:
     build: .
     container_name: servr-dash
     network_mode: host
+    # Optional: enable host process visibility for "Lokal / App-Host" metrics.
+    # pid: host
     volumes:
       # Persistent config (servers, users, plex token, radarr/sonarr settings)
       - servr-config:/app/config
       # SSH keys for server connections (mount your .ssh folder read-only)
       - ~/.ssh:/home/nextjs/.ssh:ro
+      # Optional for local host metrics/GPU access from inside the container
+      # - /dev/dri:/dev/dri
     environment:
       # REQUIRED: Change this to a random secret for JWT auth
       - PORT=3060

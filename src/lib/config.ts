@@ -10,9 +10,6 @@ const DEFAULT_CONFIG: AppConfig = {
     url: process.env.PLEX_URL || "http://localhost:32400",
     token: process.env.PLEX_TOKEN || "",
   },
-  rclone: {
-    profiles: [],
-  },
 };
 
 // In-memory cache with mtime-based invalidation
@@ -73,11 +70,6 @@ export function getRadarrConfig() {
 export function getSonarrConfig() {
   const config = getConfig();
   return config.sonarr || null;
-}
-
-export function getRcloneConfig() {
-  const config = getConfig();
-  return config.rclone || { profiles: [] };
 }
 
 export function getPlexClientId(): string {

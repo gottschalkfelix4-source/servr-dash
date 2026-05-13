@@ -1,8 +1,7 @@
-import type { RcloneConfig } from "@/types/rclone";
-
 export interface ServerConfig {
   id: string;
   name: string;
+  metricsSource?: "ssh" | "local";
   host: string;
   port: number;
   username: string;
@@ -38,6 +37,19 @@ export interface NetworkMetrics {
   txBytesPerSec: number;
 }
 
+export interface GpuMetrics {
+  id: string;
+  name: string;
+  vendor: "nvidia" | "amd" | "intel" | "unknown";
+  utilization: number; // 0-100
+  memoryUsed: number; // bytes
+  memoryTotal: number; // bytes
+  memoryPercent: number; // 0-100
+  temperature?: number; // celsius
+  powerDraw?: number; // watts
+  frequencyMHz?: number;
+}
+
 export interface OsInfo {
   name: string;
   kernel: string;
@@ -58,6 +70,7 @@ export interface ServerMetrics {
   ram: RamMetrics;
   disk: DiskMetrics[];
   network: NetworkMetrics[];
+  gpus: GpuMetrics[];
   uptime: number; // seconds
   os: OsInfo;
   timestamp: number;
@@ -68,6 +81,9 @@ export interface TimestampedMetrics {
   ramPercent: number;
   rxBytesPerSec: number;
   txBytesPerSec: number;
+  gpuPercent?: number;
+  gpuMemoryPercent?: number;
+  gpuTemperature?: number;
   timestamp: number;
 }
 
@@ -88,14 +104,8 @@ export interface AppConfig {
   cloudflare?: {
     apiToken: string;
   };
-  synology?: {
-    url: string;
-    username: string;
-    password: string;
-  };
   tmdbApiKey?: string;
   indexers?: { name: string; url: string; apiKey: string }[];
-  rclone?: RcloneConfig;
   openclaw?: {
     url: string;
     authMethod?: "none" | "token" | "password";

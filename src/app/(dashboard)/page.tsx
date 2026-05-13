@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Badge } from "@/components/ui/Badge";
-import { RcloneSummaryCard } from "@/components/rclone/RcloneSummaryCard";
+import { StreamingActivityPanel } from "@/components/dashboard/StreamingActivityPanel";
 import {
   Server,
   Tv,
@@ -14,17 +14,17 @@ import {
   Download,
   Calendar,
   HardDrive,
-  Play,
   Eye,
   AlertTriangle,
   Clock,
   ArrowRight,
   Database,
-  Waypoints,
 } from "lucide-react";
 import Link from "next/link";
 import useSWR from "swr";
 import { formatBytes } from "@/lib/utils";
+import type { ServerMetrics } from "@/types/server";
+import type { PlexSession } from "@/types/plex";
 
 const fetcher = (url: string) =>
   fetch(url).then((r) => (r.ok ? r.json() : null));
@@ -32,6 +32,9 @@ const fetcher = (url: string) =>
 export default function DashboardOverview() {
   // All data sources
   const { data: serversData } = useSWR("/api/servers", fetcher, {
+    refreshInterval: 5000,
+  });
+  const { data: serverMetricsData } = useSWR("/api/servers/metrics", fetcher, {
     refreshInterval: 5000,
   });
   const { data: plexStatus } = useSWR("/api/plex/status", fetcher, {
@@ -71,14 +74,12 @@ export default function DashboardOverview() {
   const { data: indexerData } = useSWR("/api/indexer", fetcher, {
     refreshInterval: 60000,
   });
-  const { data: rcloneData } = useSWR("/api/rclone/overview", fetcher, {
-    refreshInterval: 10000,
-  });
-
   const servers = serversData?.servers || [];
+  const serverMetricsMap: Record<string, ServerMetrics> =
+    serverMetricsData?.metrics || {};
   const movies = radarrMovies || [];
   const series = sonarrSeries || [];
-  const sessions = plexSessions?.sessions || [];
+  const sessions: PlexSession[] = plexSessions?.sessions || [];
   const rQueue = radarrQueue?.records || radarrQueue || [];
   const sQueue = sonarrQueue?.records || sonarrQueue || [];
   const rCalendar = radarrCalendar || [];
@@ -115,20 +116,10 @@ export default function DashboardOverview() {
   );
 
   const totalQueue = rQueue.length + sQueue.length;
-  const rcloneOverview = rcloneData?.overview;
-  const rcloneStatus =
-    !rcloneOverview || rcloneOverview.profileCount === 0
-      ? "unknown"
-      : rcloneOverview.offlineProfiles > 0
-      ? "offline"
-      : rcloneOverview.warningProfiles > 0 || rcloneOverview.mountsDegraded > 0
-      ? "warning"
-      : "online";
-
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* ── Service Status Row ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         <ServiceStatusCard
           label="Server"
           href="/servers"
@@ -174,79 +165,12 @@ export default function DashboardOverview() {
           value={`${totalQueue}`}
           sub="in Queue"
         />
-        <ServiceStatusCard
-          label="Rclone"
-          href="/rclone"
-          icon={<Waypoints size={16} />}
-          color="cyan"
-          status={rcloneStatus}
-          value={
-            rcloneOverview?.profileCount
-              ? rcloneStatus === "online"
-                ? "Online"
-                : rcloneStatus === "warning"
-                ? "Warnung"
-                : "Offline"
-              : "—"
-          }
-          sub={
-            rcloneOverview?.profileCount
-              ? `${rcloneOverview.mountsHealthy}/${rcloneOverview.mountsTotal} Mounts`
-              : "nicht konfiguriert"
-          }
-        />
       </div>
 
-      {rcloneOverview?.profileCount > 0 && <RcloneSummaryCard overview={rcloneOverview} />}
-
-      {/* ── Active Streams ── */}
-      {sessions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <Play size={16} className="text-accent-emerald mr-2 inline" />
-              Aktive Streams
-            </CardTitle>
-            <Badge variant="success">{sessions.length} aktiv</Badge>
-          </CardHeader>
-          <div className="space-y-2">
-            {sessions.map(
-              (s: {
-                sessionKey: string;
-                title: string;
-                grandparentTitle?: string;
-                user: string;
-                player: string;
-                videoDecision: string;
-                progress: number;
-              }) => (
-                <div
-                  key={s.sessionKey}
-                  className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]"
-                >
-                  <Play size={14} className="text-accent-emerald flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">
-                      {s.grandparentTitle
-                        ? `${s.grandparentTitle} — ${s.title}`
-                        : s.title}
-                    </div>
-                    <div className="text-xs text-muted">
-                      {s.user} · {s.player} ·{" "}
-                      <span className={s.videoDecision === "transcode" ? "text-accent-amber" : "text-accent-emerald"}>
-                        {s.videoDecision === "transcode" ? "Transcode" : "Direct Play"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="w-20 flex-shrink-0">
-                    <ProgressBar value={s.progress} />
-                  </div>
-                </div>
-              )
-            )}
-          </div>
-        </Card>
-      )}
+      <StreamingActivityPanel
+        sessions={sessions}
+        plexOnline={Boolean(plexStatus?.online)}
+      />
 
       {/* ── Server Metrics + Media Stats ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -265,7 +189,11 @@ export default function DashboardOverview() {
             <div className="space-y-3">
               {servers.map(
                 (server: { id: string; name: string; host: string }) => (
-                  <ServerQuickRow key={server.id} server={server} />
+                  <ServerQuickRow
+                    key={server.id}
+                    server={server}
+                    metrics={serverMetricsMap[server.id]}
+                  />
                 )
               )}
             </div>
@@ -599,14 +527,11 @@ function ServiceStatusCard({
 
 function ServerQuickRow({
   server,
+  metrics,
 }: {
   server: { id: string; name: string; host: string };
+  metrics?: ServerMetrics;
 }) {
-  const { data } = useSWR(`/api/servers/${server.id}/metrics`, fetcher, {
-    refreshInterval: 5000,
-  });
-  const metrics = data?.metrics;
-
   return (
     <Link
       href={`/servers/${server.id}`}
@@ -619,7 +544,11 @@ function ServerQuickRow({
           <span className="text-[11px] text-muted hidden sm:inline">{server.host}</span>
         </div>
         {metrics ? (
-          <div className="grid grid-cols-3 gap-3">
+          <div
+            className={`grid ${
+              metrics.gpus?.[0] ? "grid-cols-4" : "grid-cols-3"
+            } gap-3`}
+          >
             <MetricMini label="CPU" value={metrics.cpu} />
             <MetricMini
               label="RAM"
@@ -632,12 +561,36 @@ function ServerQuickRow({
               value={Math.round(
                 ((metrics.disk?.[0]?.used || 0) /
                   (metrics.disk?.[0]?.total || 1)) *
-                  100
+                100
               )}
             />
+            {metrics.gpus?.[0] && (
+              <MetricMini label="GPU" value={metrics.gpus[0].utilization} />
+            )}
           </div>
         ) : (
           <span className="text-xs text-muted">Verbinde...</span>
+        )}
+        {metrics?.gpus?.[0] && (
+          <div className="mt-3 rounded-lg border border-white/[0.04] bg-white/[0.02] p-2">
+            <div className="flex items-center justify-between gap-3 mb-1.5">
+              <div className="min-w-0">
+                <span className="text-xs font-medium truncate block">
+                  {metrics.gpus[0].name}
+                </span>
+                <span className="text-[10px] text-muted uppercase">
+                  {metrics.gpus[0].vendor}
+                  {metrics.gpus[0].frequencyMHz
+                    ? ` · ${metrics.gpus[0].frequencyMHz.toFixed(0)} MHz`
+                    : ""}
+                </span>
+              </div>
+              <span className="text-xs font-mono">
+                {metrics.gpus[0].utilization.toFixed(1)}%
+              </span>
+            </div>
+            <ProgressBar value={metrics.gpus[0].utilization} color="cyan" />
+          </div>
         )}
       </div>
     </Link>
@@ -657,7 +610,7 @@ function MetricMini({ label, value }: { label: string; value: number }) {
       <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
         <div
           className={`h-full rounded-full ${barColor} transition-all duration-500`}
-          style={{ width: `${Math.min(value, 100)}%` }}
+          style={{ width: `${value > 0 ? Math.min(value, 100) : 0}%` }}
         />
       </div>
     </div>

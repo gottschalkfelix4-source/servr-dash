@@ -6,12 +6,15 @@ import { ServerCard } from "@/components/server/ServerCard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Server } from "lucide-react";
+import { useServerMetricsMap } from "@/hooks/useMetrics";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function ServersPage() {
   const { data } = useSWR("/api/servers", fetcher, { refreshInterval: 10000 });
+  const { data: metricsData } = useServerMetricsMap();
   const servers = data?.servers || [];
+  const metricsMap = metricsData?.metrics || {};
 
   return (
     <div>
@@ -23,12 +26,23 @@ export default function ServersPage() {
       {servers.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {servers.map(
-            (server: { id: string; name: string; host: string }) => (
+            (server: {
+              id: string;
+              name: string;
+              host: string;
+              connected?: boolean;
+            }) => (
               <ServerCard
                 key={server.id}
                 id={server.id}
                 name={server.name}
                 host={server.host}
+                metrics={metricsMap[server.id]}
+                hasError={
+                  Boolean(data) &&
+                  !metricsMap[server.id] &&
+                  server.connected === false
+                }
               />
             )
           )}

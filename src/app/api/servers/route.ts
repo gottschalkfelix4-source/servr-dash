@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getConfig } from "@/lib/config";
 import { pollingScheduler } from "@/lib/polling";
 import { sshPool } from "@/lib/ssh/connection-pool";
+import { isLocalMetricsServer } from "@/lib/server-exec";
 
 export async function GET() {
   const config = getConfig();
@@ -12,8 +13,9 @@ export async function GET() {
     name: s.name,
     host: s.host,
     port: s.port,
+    metricsSource: s.metricsSource || "ssh",
     dockerEnabled: s.dockerEnabled ?? false,
-    connected: sshPool.isConnected(s.id),
+    connected: isLocalMetricsServer(s) || sshPool.isConnected(s.id),
   }));
 
   return NextResponse.json({ servers });

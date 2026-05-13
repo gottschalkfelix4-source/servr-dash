@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/Badge";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { Spinner } from "@/components/ui/Spinner";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { RcloneSettings } from "@/components/rclone/RcloneSettings";
 import {
   Server,
   Plus,
@@ -35,7 +34,7 @@ export default function SettingsPage() {
     <div>
       <PageHeader
         title="Einstellungen"
-        description="Server, Plex, Rclone, Radarr & Sonarr Konfiguration"
+        description="Server, Plex, Radarr & Sonarr Konfiguration"
       />
       <div className="space-y-6">
         <ServerSettings />
@@ -55,8 +54,6 @@ export default function SettingsPage() {
           statusEndpoint="/api/sonarr/status"
         />
         <CloudflareSettings />
-        <SynologySettings />
-        <RcloneSettings />
         <TmdbSettings />
         <IndexerSettings />
         <OpenClawSettings />
@@ -130,7 +127,7 @@ function ServerSettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>SSH Server</CardTitle>
+        <CardTitle>Server Monitoring</CardTitle>
         <button
           onClick={() => {
             setAdding(true);
@@ -204,12 +201,17 @@ function ServerRow({
         <div>
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm">{server.name}</span>
+            <Badge variant={server.metricsSource === "local" ? "success" : "default"}>
+              {server.metricsSource === "local" ? "Lokal" : "SSH"}
+            </Badge>
             {server.dockerEnabled && (
               <Badge variant="info">Docker</Badge>
             )}
           </div>
           <span className="text-xs text-muted">
-            {server.username}@{server.host}:{server.port}
+            {server.metricsSource === "local"
+              ? "Lokale Metriken aus der App-Umgebung"
+              : `${server.username}@${server.host}:${server.port}`}
           </span>
         </div>
       </div>
@@ -248,6 +250,7 @@ function ServerForm({
     server || {
       id: "",
       name: "",
+      metricsSource: "ssh",
       host: "",
       port: 22,
       username: "root",
@@ -260,8 +263,15 @@ function ServerForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const isLocal = form.metricsSource === "local";
     const serverToSave = {
       ...form,
+      host: isLocal ? "localhost" : form.host,
+      port: isLocal ? 0 : form.port,
+      username: isLocal ? "" : form.username,
+      authMethod: isLocal ? ("password" as const) : form.authMethod,
+      password: isLocal ? "" : form.password,
+      privateKeyPath: isLocal ? "" : form.privateKeyPath,
       id: form.id || form.name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
     };
     await onSave(serverToSave);
@@ -287,13 +297,29 @@ function ServerForm({
           />
         </div>
         <div>
+          <label className="text-xs text-muted mb-1 block">Metrikquelle</label>
+          <select
+            className={inputClass}
+            value={form.metricsSource || "ssh"}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                metricsSource: e.target.value as "ssh" | "local",
+              })
+            }
+          >
+            <option value="ssh">SSH Remote-Server</option>
+            <option value="local">Lokal / App-Host</option>
+          </select>
+        </div>
+        <div>
           <label className="text-xs text-muted mb-1 block">Host / IP</label>
           <input
             className={inputClass}
             placeholder="192.168.1.10"
             value={form.host}
             onChange={(e) => setForm({ ...form, host: e.target.value })}
-            required
+            required={(form.metricsSource || "ssh") === "ssh"}
           />
         </div>
         <div>
@@ -314,7 +340,7 @@ function ServerForm({
             placeholder="root"
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
-            required
+            required={(form.metricsSource || "ssh") === "ssh"}
           />
         </div>
         <div>
@@ -363,6 +389,15 @@ function ServerForm({
         )}
       </div>
 
+      {(form.metricsSource || "ssh") === "local" && (
+        <div className="mb-4 rounded-lg border border-accent-cyan/15 bg-accent-cyan/5 p-3 text-xs text-muted">
+          Lokale Metriken werden dort gesammelt, wo Servr Dash läuft. Im
+          Docker-Betrieb ist das ohne Host-Mounts die Container-Sicht; für
+          echte Host-Metriken braucht der Container Zugriff auf Host-Prozesse
+          und relevante Systempfade.
+        </div>
+      )}
+
       <div className="flex items-center gap-3 mb-4">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
@@ -380,7 +415,11 @@ function ServerForm({
       <div className="flex items-center gap-2">
         <button
           type="submit"
-          disabled={saving || !form.name || !form.host}
+          disabled={
+            saving ||
+            !form.name ||
+            ((form.metricsSource || "ssh") === "ssh" && !form.host)
+          }
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-cyan text-background text-sm font-medium hover:bg-accent-cyan/90 transition-colors disabled:opacity-50"
         >
           <Save size={14} />
@@ -561,14 +600,53 @@ function PlexConnected({ onLogout }: { onLogout: () => void }) {
     name: string;
     version: string;
     online: boolean;
+    error?: string;
   } | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const checkStatus = useCallback(async () => {
+    setChecking(true);
+    let timeout: number | undefined;
+    try {
+      const controller = new AbortController();
+      timeout = window.setTimeout(() => controller.abort(), 5000);
+      const response = await fetch("/api/plex/status", {
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      const data = await response.json();
+      setPlexStatus(data);
+    } catch (err) {
+      setPlexStatus({
+        name: "Plex Server",
+        version: "",
+        online: false,
+        error:
+          err instanceof Error && err.name === "AbortError"
+            ? "Statusabfrage abgebrochen"
+            : "Statusabfrage fehlgeschlagen",
+      });
+    } finally {
+      if (timeout !== undefined) {
+        window.clearTimeout(timeout);
+      }
+      setChecking(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetch("/api/plex/status")
-      .then((r) => r.json())
-      .then(setPlexStatus)
-      .catch(() => {});
-  }, []);
+    checkStatus();
+  }, [checkStatus]);
+
+  const statusText = checking
+    ? "Prüfe Verbindung..."
+    : plexStatus?.online
+    ? `Verbunden · v${plexStatus.version || "unbekannt"}`
+    : plexStatus
+    ? `Nicht erreichbar${
+        plexStatus.error ? ` · ${plexStatus.error}` : ""
+      }`
+    : "Noch nicht geprüft";
 
   return (
     <div className="flex items-center justify-between p-3 rounded-lg bg-background">
@@ -579,26 +657,35 @@ function PlexConnected({ onLogout }: { onLogout: () => void }) {
         <div>
           <div className="flex items-center gap-2">
             <StatusDot
-              status={plexStatus?.online ? "online" : "unknown"}
+              status={
+                plexStatus?.online ? "online" : plexStatus ? "offline" : "unknown"
+              }
             />
             <span className="font-medium text-sm">
               {plexStatus?.name || "Plex Server"}
             </span>
+            {checking && <Spinner className="h-3 w-3" />}
           </div>
-          <span className="text-xs text-muted">
-            {plexStatus?.online
-              ? `Verbunden · v${plexStatus.version}`
-              : "Prüfe Verbindung..."}
-          </span>
+          <span className="text-xs text-muted">{statusText}</span>
         </div>
       </div>
-      <button
-        onClick={onLogout}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-accent-red hover:bg-accent-red/10 transition-colors"
-      >
-        <LogOut size={14} />
-        Trennen
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={checkStatus}
+          disabled={checking}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] text-sm hover:bg-white/[0.04] transition-colors disabled:opacity-50"
+        >
+          {checking ? <Spinner className="h-3 w-3" /> : <Tv size={14} />}
+          Prüfen
+        </button>
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-accent-red hover:bg-accent-red/10 transition-colors"
+        >
+          <LogOut size={14} />
+          Trennen
+        </button>
+      </div>
     </div>
   );
 }
@@ -1034,252 +1121,6 @@ function CloudflareSettings() {
       {status === "error" && (
         <p className="text-xs text-accent-red mt-2">✗ Token ungültig oder keine Berechtigungen</p>
       )}
-    </Card>
-  );
-}
-
-// --- Synology Settings ---
-
-function SynologySettings() {
-  const [config, setConfig] = useState<AppConfig | null>(null);
-  const [url, setUrl] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<"untested" | "ok" | "error" | "needs2fa">("untested");
-  const [otpCode, setOtpCode] = useState("");
-  const [otpSubmitting, setOtpSubmitting] = useState(false);
-  const [otpError, setOtpError] = useState<string | null>(null);
-
-  const loadConfig = useCallback(async () => {
-    const res = await fetch("/api/config");
-    const data = await res.json();
-    setConfig(data);
-    const syn = data.synology;
-    if (syn) {
-      setUrl(syn.url || "");
-      setUsername(syn.username || "");
-      setPassword(syn.password || "");
-    }
-  }, []);
-
-  useEffect(() => {
-    loadConfig();
-  }, [loadConfig]);
-
-  const checkStatus = useCallback(async () => {
-    if (!url || !username || !password) {
-      setStatus("untested");
-      return;
-    }
-    try {
-      const res = await fetch("/api/synology/status");
-      const data = await res.json();
-      if (data.success) {
-        setStatus("ok");
-      } else if (data.needs2fa) {
-        setStatus("needs2fa");
-      } else {
-        setStatus("error");
-      }
-    } catch {
-      setStatus("error");
-    }
-  }, [url, username, password]);
-
-  useEffect(() => {
-    checkStatus();
-  }, [checkStatus]);
-
-  const handleSave = async () => {
-    if (!config) return;
-    setSaving(true);
-    try {
-      const existing = config.synology as Record<string, unknown> | undefined;
-      const newConfig = {
-        ...config,
-        synology: {
-          url: url.replace(/\/$/, ""),
-          username,
-          password,
-          // Preserve deviceId if it exists
-          ...(existing?.deviceId ? { deviceId: existing.deviceId } : {}),
-        },
-      };
-      await fetch("/api/config", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newConfig),
-      });
-      setConfig(newConfig as AppConfig);
-      setTimeout(checkStatus, 500);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleOtpSubmit = async () => {
-    if (!otpCode.trim()) return;
-    setOtpSubmitting(true);
-    setOtpError(null);
-    try {
-      const res = await fetch("/api/synology/otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otpCode: otpCode.trim() }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setStatus("ok");
-        setOtpCode("");
-        loadConfig(); // Reload to get saved deviceId
-      } else {
-        setOtpError(data.error || "OTP Code ungültig");
-      }
-    } catch {
-      setOtpError("Verbindungsfehler");
-    } finally {
-      setOtpSubmitting(false);
-    }
-  };
-
-  const handleRemove = async () => {
-    if (!config || !confirm("Synology Verbindung wirklich entfernen?")) return;
-    setSaving(true);
-    try {
-      const newConfig = { ...config };
-      delete newConfig.synology;
-      await fetch("/api/config", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newConfig),
-      });
-      setConfig(newConfig as AppConfig);
-      setUrl("");
-      setUsername("");
-      setPassword("");
-      setStatus("untested");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const isConfigured = !!(url && username && password);
-  const inputClass =
-    "w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent-cyan/50 focus:shadow-[0_0_15px_-5px_rgba(34,211,238,0.3)] transition-all duration-200";
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Synology Active Backup</CardTitle>
-        <Shield size={16} className="text-accent-emerald" />
-      </CardHeader>
-
-      {status === "ok" && (
-        <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] mb-4">
-          <div className="flex items-center gap-3">
-            <StatusDot status="online" />
-            <div>
-              <span className="font-medium text-sm">Synology NAS</span>
-              <span className="text-xs text-muted ml-2">Verbunden</span>
-            </div>
-          </div>
-          <button
-            onClick={handleRemove}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-accent-red hover:bg-accent-red/10 transition-colors"
-          >
-            <LogOut size={14} />
-            Trennen
-          </button>
-        </div>
-      )}
-
-      {/* 2FA OTP Input */}
-      {status === "needs2fa" && (
-        <div className="p-4 rounded-lg border border-accent-amber/20 bg-accent-amber/5 mb-4">
-          <p className="text-sm font-medium text-accent-amber mb-1">
-            Zwei-Faktor-Authentifizierung erforderlich
-          </p>
-          <p className="text-xs text-muted mb-3">
-            Gib den 6-stelligen Code aus deiner Authenticator-App ein. Nach der
-            ersten Verifizierung wird dieses Gerät als vertrauenswürdig
-            gespeichert.
-          </p>
-          <div className="flex gap-2">
-            <input
-              className={inputClass + " max-w-[200px] text-center tracking-[0.3em] font-mono"}
-              placeholder="000000"
-              value={otpCode}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                setOtpCode(val);
-                setOtpError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && otpCode.length === 6) handleOtpSubmit();
-              }}
-              maxLength={6}
-              autoFocus
-            />
-            <button
-              onClick={handleOtpSubmit}
-              disabled={otpSubmitting || otpCode.length !== 6}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-cyan text-background text-sm font-medium hover:bg-accent-cyan/90 transition-colors disabled:opacity-50"
-            >
-              {otpSubmitting ? <Spinner /> : <Save size={14} />}
-              Bestätigen
-            </button>
-          </div>
-          {otpError && (
-            <p className="text-xs text-accent-red mt-2">{otpError}</p>
-          )}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-        <div>
-          <label className="text-xs text-muted mb-1 block">NAS URL</label>
-          <input
-            className={inputClass}
-            placeholder="https://192.168.1.5:5001"
-            value={url}
-            onChange={(e) => { setUrl(e.target.value); setStatus("untested"); }}
-          />
-        </div>
-        <div>
-          <label className="text-xs text-muted mb-1 block">Benutzername</label>
-          <input
-            className={inputClass}
-            placeholder="admin"
-            value={username}
-            onChange={(e) => { setUsername(e.target.value); setStatus("untested"); }}
-          />
-        </div>
-        <div>
-          <label className="text-xs text-muted mb-1 block">Passwort</label>
-          <input
-            className={inputClass}
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setStatus("untested"); }}
-          />
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          disabled={saving || !url || !username || !password}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-cyan text-background text-sm font-medium hover:bg-accent-cyan/90 transition-colors disabled:opacity-50"
-        >
-          <Save size={14} />
-          {saving ? "Speichern..." : "Speichern"}
-        </button>
-        {isConfigured && status === "error" && (
-          <Badge variant="danger">Nicht erreichbar</Badge>
-        )}
-      </div>
     </Card>
   );
 }

@@ -6,6 +6,8 @@ import type {
   PlexUser,
 } from "@/types/plex";
 
+const PLEX_REQUEST_TIMEOUT_MS = 3500;
+
 class PlexClient {
   private get baseUrl() {
     return getPlexUrl();
@@ -15,21 +17,36 @@ class PlexClient {
     return getPlexToken();
   }
 
-  private async fetch<T>(path: string): Promise<T> {
+  private async fetch<T>(
+    path: string,
+    timeoutMs = PLEX_REQUEST_TIMEOUT_MS
+  ): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     const separator = path.includes("?") ? "&" : "?";
     const fullUrl = `${url}${separator}X-Plex-Token=${this.token}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-    const res = await fetch(fullUrl, {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
+    try {
+      const res = await fetch(fullUrl, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+        signal: controller.signal,
+      });
 
-    if (!res.ok) {
-      throw new Error(`Plex API error: ${res.status} ${res.statusText}`);
+      if (!res.ok) {
+        throw new Error(`Plex API error: ${res.status} ${res.statusText}`);
+      }
+
+      return res.json() as Promise<T>;
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        throw new Error(`Plex request timed out after ${timeoutMs}ms`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
     }
-
-    return res.json() as Promise<T>;
   }
 
   async getStatus(): Promise<PlexServerStatus> {
@@ -48,12 +65,13 @@ class PlexClient {
         platform: data.MediaContainer.platform || "",
         online: true,
       };
-    } catch {
+    } catch (err) {
       return {
         name: "Plex Server",
         version: "",
         platform: "",
         online: false,
+        error: err instanceof Error ? err.message : "Plex not reachable",
       };
     }
   }
@@ -125,28 +143,46 @@ class PlexClient {
 
         const duration = (m.duration as number) || 0;
         const viewOffset = (m.viewOffset as number) || 0;
+        const videoDecision =
+          (transcodeSession.videoDecision ||
+            media.videoDecision ||
+            part.videoDecision ||
+            part.decision ||
+            "directplay") as PlexSession["videoDecision"];
+        const audioDecision =
+          (transcodeSession.audioDecision ||
+            media.audioDecision ||
+            part.audioDecision ||
+            part.decision ||
+            "directplay") as PlexSession["audioDecision"];
 
         return {
           sessionKey: (m.sessionKey as string) || String(m.ratingKey || ""),
           title: (m.title as string) || "",
+          parentTitle: m.parentTitle as string | undefined,
           grandparentTitle: m.grandparentTitle as string | undefined,
           type: (m.type as PlexSession["type"]) || "movie",
           year: m.year as number | undefined,
           thumb: m.thumb as string | undefined,
+          librarySectionTitle: m.librarySectionTitle as string | undefined,
           user: (user.title as string) || "Unknown",
           player: (player.title as string) || "",
+          playerAddress: player.address as string | undefined,
+          playerState: player.state as PlexSession["playerState"] | undefined,
           playerPlatform: (player.platform as string) || "",
           videoResolution: (media.videoResolution as string) || "",
-          videoDecision:
-            ((part.decision as string) as PlexSession["videoDecision"]) ||
-            "directplay",
-          audioDecision:
-            ((part.decision as string) as PlexSession["audioDecision"]) ||
-            "directplay",
+          videoCodec: media.videoCodec as string | undefined,
+          audioCodec: media.audioCodec as string | undefined,
+          container: media.container as string | undefined,
+          bitrate: media.bitrate as number | undefined,
+          videoDecision,
+          audioDecision,
           progress: duration > 0 ? (viewOffset / duration) * 100 : 0,
           duration,
           viewOffset,
           bandwidth: (session.bandwidth as number) || 0,
+          transcodeSpeed: transcodeSession.speed as number | undefined,
+          transcodeThrottled: transcodeSession.throttled as boolean | undefined,
           transcodeProgress: transcodeSession.progress as number | undefined,
         };
       });

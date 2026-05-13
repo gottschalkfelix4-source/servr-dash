@@ -19,8 +19,8 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
-# ssh2 needs these native libs at runtime
-RUN apk add --no-cache openssh-client
+# ssh2 needs these native libs at runtime; procps provides ps/free for local metrics.
+RUN apk add --no-cache openssh-client procps
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

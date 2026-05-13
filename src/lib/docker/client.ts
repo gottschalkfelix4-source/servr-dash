@@ -1,4 +1,4 @@
-import { sshPool } from "@/lib/ssh/connection-pool";
+import { execServerCommand } from "@/lib/server-exec";
 import type { ServerConfig } from "@/types/server";
 import type {
   DockerContainer,
@@ -49,7 +49,7 @@ export class DockerClient {
   constructor(private server: ServerConfig) {}
 
   private async exec(command: string): Promise<string> {
-    return sshPool.exec(this.server, command);
+    return execServerCommand(this.server, command);
   }
 
   // Container operations

@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Self-hosted server dashboard for your homelab</strong><br/>
-  SSH monitoring · Docker · Plex · Radarr · Sonarr · Synology Backups
+  SSH monitoring · GPU stats · Docker · Plex · Radarr · Sonarr
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 ## Features
 
 ### Server Monitoring
-- Real-time **CPU, RAM, Disk & Network** metrics via SSH
+- Real-time **CPU, GPU, RAM, Disk & Network** metrics via SSH
 - Live-updating charts (Recharts)
 - Process list with CPU/RAM usage
 - OS info, uptime, hostname
@@ -60,15 +60,6 @@
 - **Download queue** with episode info, progress & ETA
 - **Calendar** — upcoming episodes for next 14 days
 
-### Synology Active Backup for Business
-- **Backup overview** — device count, task count, last 24h stats, total storage
-- **Device list** — all connected backup clients with online/offline status
-- Per-device: IP, OS, last/next backup time, backup size, agent version
-- **Backup tasks** — all configured tasks with status (active/running/paused)
-- **Backup history** — chronological log grouped by date
-- Per-entry: status (success/warning/error), duration, transferred data
-- Synology DSM API with session caching and auto-retry on expiry
-
 ### TMDB Integration
 - **Trending, Popular & Upcoming** suggestions when adding movies/series
 - Poster grid with ratings, titles, year
@@ -80,7 +71,7 @@
 - Aggregated overview from **all services** on one page
 - Service health status (Server, Plex, Radarr, Sonarr, Downloads)
 - Active Plex streams
-- Server CPU/RAM/Disk mini-bars
+- Server CPU/GPU/RAM/Disk mini-bars
 - Media library stats (movies, series, episodes, total storage)
 - Download queue summary
 - Upcoming releases (next 7 days)
@@ -89,7 +80,6 @@
 - Add/edit/remove SSH servers via UI (no config file editing)
 - Plex OAuth login button
 - Radarr & Sonarr URL + API key configuration
-- Synology NAS URL + credentials
 - TMDB API key for trending suggestions
 - User management (add/remove users, admin/user roles)
 
@@ -162,8 +152,7 @@ All services are configured through the **Settings** page (`/settings`):
 2. **Plex** — Click "Mit Plex anmelden" for OAuth login
 3. **Radarr** — Enter URL + API key (from Radarr Settings General)
 4. **Sonarr** — Enter URL + API key (from Sonarr Settings General)
-5. **Synology** — Enter NAS URL, username & password
-6. **TMDB** — Enter free API Read Access Token from themoviedb.org
+5. **TMDB** — Enter free API Read Access Token from themoviedb.org
 
 ### Docker Volumes
 

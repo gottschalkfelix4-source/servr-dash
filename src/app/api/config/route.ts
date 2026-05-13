@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getConfig, saveConfig } from "@/lib/config";
+import { pollingScheduler } from "@/lib/polling";
 import type { AppConfig } from "@/types/server";
 
 const MASKED_SECRET = "••••••••";
@@ -33,27 +34,11 @@ function sanitizeConfig(config: AppConfig): Record<string, unknown> {
           apiToken: config.cloudflare.apiToken ? MASKED_SECRET : undefined,
         }
       : undefined,
-    synology: config.synology
-      ? {
-          url: config.synology.url,
-          username: config.synology.username,
-          password: MASKED_SECRET,
-        }
-      : undefined,
     indexers: (config.indexers || []).map((indexer) => ({
       name: indexer.name,
       url: indexer.url,
       apiKey: indexer.apiKey ? MASKED_SECRET : undefined,
     })),
-    rclone: config.rclone
-      ? {
-          profiles: config.rclone.profiles.map((profile) => ({
-            ...profile,
-            password: profile.password ? MASKED_SECRET : undefined,
-            mounts: profile.mounts || [],
-          })),
-        }
-      : undefined,
     tmdbApiKey: config.tmdbApiKey ? MASKED_SECRET : undefined,
     openclaw: config.openclaw
       ? {
@@ -106,6 +91,8 @@ export async function PUT(request: Request) {
         clientId: existing.plex.clientId,
       },
     };
+    delete (merged as Record<string, unknown>).synology;
+    delete (merged as Record<string, unknown>).rclone;
 
     if (body.radarr) {
       merged.radarr = {
@@ -142,19 +129,6 @@ export async function PUT(request: Request) {
       merged.cloudflare = existing.cloudflare;
     }
 
-    if (body.synology) {
-      merged.synology = {
-        url: body.synology.url,
-        username: body.synology.username,
-        password:
-          body.synology.password === MASKED_SECRET
-            ? existing.synology?.password || ""
-            : body.synology.password,
-      };
-    } else if (body.synology === undefined && existing.synology) {
-      merged.synology = existing.synology;
-    }
-
     if (body.indexers) {
       merged.indexers = body.indexers.map(
         (indexer: { name: string; url: string; apiKey: string }, idx: number) => ({
@@ -168,66 +142,6 @@ export async function PUT(request: Request) {
       );
     } else if (body.indexers === undefined && existing.indexers) {
       merged.indexers = existing.indexers;
-    }
-
-    if (body.rclone) {
-      merged.rclone = {
-        profiles: (body.rclone.profiles || []).map(
-          (profile: Record<string, unknown>) => {
-            const existingProfile = existing.rclone?.profiles.find(
-              (item) => item.id === profile.id
-            );
-
-            return {
-              id: String(profile.id || ""),
-              name: String(profile.name || ""),
-              serverId: String(profile.serverId || ""),
-              enabled: Boolean(profile.enabled),
-              rcUrl:
-                typeof profile.rcUrl === "string" && profile.rcUrl
-                  ? profile.rcUrl
-                  : undefined,
-              rcPort:
-                typeof profile.rcPort === "number"
-                  ? profile.rcPort
-                  : typeof profile.rcPort === "string" && profile.rcPort
-                  ? Number(profile.rcPort)
-                  : undefined,
-              username:
-                typeof profile.username === "string" && profile.username
-                  ? profile.username
-                  : undefined,
-              password:
-                profile.password === MASKED_SECRET
-                  ? existingProfile?.password
-                  : typeof profile.password === "string" && profile.password
-                  ? profile.password
-                  : undefined,
-              label:
-                typeof profile.label === "string" && profile.label
-                  ? profile.label
-                  : undefined,
-              mounts: Array.isArray(profile.mounts)
-                ? profile.mounts.map((mount: Record<string, unknown>) => ({
-                    id: String(mount.id || ""),
-                    label: String(mount.label || ""),
-                    path: String(mount.path || ""),
-                    remoteName:
-                      typeof mount.remoteName === "string" && mount.remoteName
-                        ? mount.remoteName
-                        : undefined,
-                    mode:
-                      mount.mode === "ro" || mount.mode === "rw"
-                        ? mount.mode
-                        : "unknown",
-                  }))
-                : [],
-            };
-          }
-        ),
-      };
-    } else if (body.rclone === undefined && existing.rclone) {
-      merged.rclone = existing.rclone;
     }
 
     if (body.openclaw) {
@@ -256,6 +170,7 @@ export async function PUT(request: Request) {
     }
 
     saveConfig(merged);
+    pollingScheduler.refresh();
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(
