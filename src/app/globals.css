@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0f1e;
-  --foreground: #e2e8f0;
-  --card: rgba(15, 23, 42, 0.6);
-  --card-solid: #0f172a;
-  --card-hover: rgba(30, 41, 59, 0.8);
-  --border: rgba(148, 163, 184, 0.1);
-  --border-glow: rgba(148, 163, 184, 0.15);
-  --accent-cyan: #22d3ee;
-  --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-red: #ef4444;
-  --accent-purple: #a78bfa;
-  --muted: #94a3b8;
+  --background: #0e0e10;
+  --foreground: #f1f1f1;
+  --card: #171719;
+  --card-solid: #121214;
+  --card-hover: #1d1d20;
+  --border: #2a2a2e;
+  --border-glow: #3a3a40;
+  --accent-cyan: #78c6a3;
+  --accent-emerald: #56c98a;
+  --accent-amber: #e7b75f;
+  --accent-red: #e36b6b;
+  --accent-purple: #b9a1e6;
+  --muted: #9b9ba3;
 }
 
 @theme inline {
@@ -42,94 +42,51 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), sans-serif;
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
-  /* Safe area insets for notched phones */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
 
-/* Ambient background gradient */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(34, 211, 238, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(167, 139, 250, 0.05) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
-    var(--background);
+  background: var(--background);
   pointer-events: none;
 }
 
-/* Selection */
 ::selection {
-  background: rgba(34, 211, 238, 0.25);
-  color: white;
+  background: rgba(120, 198, 163, 0.3);
+  color: var(--foreground);
 }
 
-/* Glass utility */
 .glass {
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: var(--card-solid);
+  border: 1px solid var(--border);
 }
 
-/* Glow utilities */
-.glow-cyan {
-  box-shadow: 0 0 20px -5px rgba(34, 211, 238, 0.2), 0 0 40px -10px rgba(34, 211, 238, 0.1);
-}
-.glow-emerald {
-  box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.2), 0 0 40px -10px rgba(16, 185, 129, 0.1);
-}
-.glow-purple {
-  box-shadow: 0 0 20px -5px rgba(167, 139, 250, 0.2), 0 0 40px -10px rgba(167, 139, 250, 0.1);
-}
-.glow-amber {
-  box-shadow: 0 0 20px -5px rgba(245, 158, 11, 0.2), 0 0 40px -10px rgba(245, 158, 11, 0.1);
-}
-.glow-red {
-  box-shadow: 0 0 20px -5px rgba(239, 68, 68, 0.2), 0 0 40px -10px rgba(239, 68, 68, 0.1);
-}
-
-/* Pulse glow animation */
 @keyframes pulse-glow {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.72; }
 }
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
-/* Gradient border utility */
+.glow-cyan,
+.glow-emerald,
+.glow-purple,
+.glow-amber,
+.glow-red,
 .gradient-border {
-  position: relative;
-}
-.gradient-border::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  padding: 1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, rgba(34, 211, 238, 0.2), rgba(167, 139, 250, 0.1), transparent 60%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-.gradient-border:hover::before {
-  opacity: 1;
+  box-shadow: none;
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -140,46 +97,38 @@ body::before {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.15);
+  background: #333338;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.3);
+  background: #44444a;
 }
 
-/* ===== Mobile / PWA Optimizations ===== */
-
-/* Standalone PWA: adjust for status bar */
 @media all and (display-mode: standalone) {
   body {
     padding-top: env(safe-area-inset-top);
   }
 }
 
-/* Mobile touch targets: minimum 44px */
 @media (max-width: 768px) {
   button, a, select, input[type="checkbox"] {
     min-height: 44px;
     min-width: 44px;
   }
 
-  /* Prevent horizontal overflow on small screens */
   main {
     overflow-x: hidden;
   }
 
-  /* Larger text on small screens for readability */
   .text-xs {
     font-size: 0.8rem;
   }
 
-  /* Stack cards vertically */
   .grid {
     gap: 0.75rem;
   }
 
-  /* Better table scrolling on mobile */
   table {
     display: block;
     overflow-x: auto;
@@ -187,14 +136,12 @@ body::before {
   }
 }
 
-/* Small phones */
 @media (max-width: 380px) {
   main {
     padding: 0.75rem !important;
   }
 }
 
-/* Reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -203,12 +150,10 @@ body::before {
   }
 }
 
-/* PWA: prevent pull-to-refresh gesture interfering */
 body.pwa-standalone {
   overscroll-behavior-y: contain;
 }
 
-/* Fix iOS input zoom (font-size >= 16px) */
 @media (max-width: 768px) {
   input, select, textarea {
     font-size: 16px !important;

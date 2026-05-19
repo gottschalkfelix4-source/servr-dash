@@ -34,9 +34,8 @@ export function formatTooltipTime(timestamp: number, range: MetricsRange): strin
 }
 
 export const commonTooltipStyle = {
-  backgroundColor: "rgba(15, 23, 42, 0.92)",
-  backdropFilter: "blur(12px)",
-  border: "1px solid rgba(148, 163, 184, 0.14)",
-  borderRadius: "10px",
-  color: "#e2e8f0",
+  backgroundColor: "#171719",
+  border: "1px solid #2a2a2e",
+  borderRadius: "8px",
+  color: "#f1f1f1",
 };

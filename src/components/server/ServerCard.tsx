@@ -32,7 +32,7 @@ export function ServerCard({
     <Link href={`/servers/${id}`}>
       <Card hover className="h-full">
         <div className="flex items-center gap-3 mb-4">
-          <div className="h-10 w-10 rounded-lg bg-accent-cyan/10 flex items-center justify-center shadow-[0_0_12px_-3px_rgba(34,211,238,0.3)]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md border border-accent-cyan/20 bg-accent-cyan/10">
             <Server size={20} className="text-accent-cyan" />
           </div>
           <div className="flex-1 min-w-0">
@@ -73,7 +73,7 @@ export function ServerCard({
                 <ProgressBar value={primaryGpu.utilization} color="cyan" />
               </div>
             )}
-            <div className="flex justify-between items-center pt-3 border-t border-white/[0.06]">
+            <div className="flex items-center justify-between border-t border-border pt-3">
               <Badge variant="info">{metrics.os.name.split(" ")[0]}</Badge>
               <span className="text-xs text-muted font-mono">
                 {formatUptime(metrics.uptime)}

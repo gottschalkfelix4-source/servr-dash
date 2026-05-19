@@ -107,47 +107,42 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/70 lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* Mobile hamburger */}
       <button
-        className="fixed left-3 z-50 lg:hidden rounded-lg glass p-2.5"
+        className="fixed left-3 z-50 rounded-md border border-border bg-card-solid p-2.5 text-muted lg:hidden"
         style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
         onClick={() => setMobileOpen(!mobileOpen)}
-        aria-label="Menü öffnen"
+        aria-label="Menue oeffnen"
       >
         <LayoutDashboard size={20} />
       </button>
 
-      {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen flex flex-col transition-all duration-300",
-          "bg-card-solid/80 backdrop-blur-2xl border-r border-white/[0.06]",
+          "fixed left-0 top-0 z-40 flex h-screen flex-col transition-all duration-150",
+          "border-r border-border bg-card-solid",
           collapsed ? "w-16" : "w-56",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 h-16 border-b border-white/[0.06]">
-          <div className="h-8 w-8 rounded-lg bg-accent-cyan/15 flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_-2px_rgba(34,211,238,0.4)]">
+        <div className="flex h-16 items-center gap-3 border-b border-border px-4">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-border bg-card-hover">
             <Server size={18} className="text-accent-cyan" />
           </div>
           {!collapsed && (
-            <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+            <span className="text-base font-semibold tracking-tight text-foreground">
               Servr
             </span>
           )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
           {navItems.map((item) => {
             const isActive =
               pathname === item.href ||
@@ -159,32 +154,31 @@ export function Sidebar() {
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    "relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors duration-150",
                     isActive
-                      ? "bg-accent-cyan/10 text-accent-cyan shadow-[0_0_20px_-8px_rgba(34,211,238,0.3)]"
-                      : "text-muted hover:bg-white/[0.04] hover:text-foreground"
+                      ? "bg-card-hover text-foreground"
+                      : "text-muted hover:bg-card-hover hover:text-foreground"
                   )}
                 >
                   {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-accent-cyan shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                    <div className="absolute bottom-2 left-0 top-2 w-0.5 rounded-r-sm bg-accent-cyan" />
                   )}
                   {item.icon}
                   {!collapsed && <span>{item.label}</span>}
                 </Link>
 
-                {/* Sub-navigation */}
                 {!collapsed && item.children && isActive && (
-                  <div className="ml-5 mt-1 space-y-1 border-l border-accent-cyan/20 pl-3">
+                  <div className="ml-5 mt-1 space-y-1 border-l border-border pl-3">
                     {item.children.map((child) => (
                       <Link
                         key={child.href}
                         href={child.href}
                         onClick={() => setMobileOpen(false)}
                         className={cn(
-                          "flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-200",
+                          "flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors duration-150",
                           pathname === child.href
-                            ? "text-accent-cyan bg-accent-cyan/5"
-                            : "text-muted hover:text-foreground"
+                            ? "bg-card-hover text-foreground"
+                            : "text-muted hover:bg-card-hover hover:text-foreground"
                         )}
                       >
                         {child.icon}
@@ -198,10 +192,10 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Collapse toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="hidden lg:flex items-center justify-center h-12 border-t border-white/[0.06] text-muted hover:text-foreground transition-colors"
+          className="hidden h-12 items-center justify-center border-t border-border text-muted transition-colors hover:bg-card-hover hover:text-foreground lg:flex"
+          aria-label={collapsed ? "Sidebar erweitern" : "Sidebar einklappen"}
         >
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>

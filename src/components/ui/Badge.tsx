@@ -3,11 +3,11 @@ import { cn } from "@/lib/utils";
 type BadgeVariant = "default" | "success" | "warning" | "danger" | "info";
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: "bg-border text-foreground",
-  success: "bg-accent-emerald/15 text-accent-emerald shadow-[0_0_10px_-3px_rgba(16,185,129,0.3)]",
-  warning: "bg-accent-amber/15 text-accent-amber shadow-[0_0_10px_-3px_rgba(245,158,11,0.3)]",
-  danger: "bg-accent-red/15 text-accent-red shadow-[0_0_10px_-3px_rgba(239,68,68,0.3)]",
-  info: "bg-accent-cyan/15 text-accent-cyan shadow-[0_0_10px_-3px_rgba(34,211,238,0.3)]",
+  default: "border-border bg-card-hover text-muted",
+  success: "border-accent-emerald/25 bg-accent-emerald/10 text-accent-emerald",
+  warning: "border-accent-amber/25 bg-accent-amber/10 text-accent-amber",
+  danger: "border-accent-red/25 bg-accent-red/10 text-accent-red",
+  info: "border-accent-cyan/25 bg-accent-cyan/10 text-accent-cyan",
 };
 
 interface BadgeProps {
@@ -20,7 +20,7 @@ export function Badge({ children, variant = "default", className }: BadgeProps) 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border border-white/5",
+        "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium",
         variantStyles[variant],
         className
       )}

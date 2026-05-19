@@ -45,27 +45,13 @@ export const CpuChart = memo(function CpuChart({
   return (
     <ResponsiveContainer width="100%" height={200}>
       <AreaChart data={chartData}>
-        <defs>
-          <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.4} />
-            <stop offset="50%" stopColor="#22d3ee" stopOpacity={0.1} />
-            <stop offset="100%" stopColor="#22d3ee" stopOpacity={0} />
-          </linearGradient>
-          <filter id="cpuGlow">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        <CartesianGrid stroke="rgba(148, 163, 184, 0.08)" vertical={false} />
+        <CartesianGrid stroke="#2a2a2e" vertical={false} />
         <XAxis
           dataKey="timestamp"
           type="number"
           domain={hasLiveWindow ? [liveNow - windowMs, liveNow] : ["dataMin", "dataMax"]}
           allowDataOverflow={hasLiveWindow}
-          tick={{ fontSize: 10, fill: "#64748b" }}
+          tick={{ fontSize: 10, fill: "#9b9ba3" }}
           axisLine={false}
           tickLine={false}
           interval="preserveStartEnd"
@@ -74,27 +60,24 @@ export const CpuChart = memo(function CpuChart({
         />
         <YAxis
           domain={[0, 100]}
-          tick={{ fontSize: 10, fill: "#64748b" }}
+          tick={{ fontSize: 10, fill: "#9b9ba3" }}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v) => `${v}%`}
           width={40}
         />
         <Tooltip
-          contentStyle={{
-            ...commonTooltipStyle,
-            boxShadow: "0 0 20px -5px rgba(34, 211, 238, 0.2)",
-          }}
+          contentStyle={commonTooltipStyle}
           labelFormatter={(value) => formatTooltipTime(Number(value), range)}
           formatter={(value) => [`${Number(value).toFixed(1)}%`, "CPU"]}
         />
         <Area
           type="monotone"
           dataKey="cpu"
-          stroke="#22d3ee"
+          stroke="#78c6a3"
           strokeWidth={2}
-          fill="url(#cpuGradient)"
-          filter="url(#cpuGlow)"
+          fill="#78c6a3"
+          fillOpacity={0.12}
           isAnimationActive={false}
         />
       </AreaChart>

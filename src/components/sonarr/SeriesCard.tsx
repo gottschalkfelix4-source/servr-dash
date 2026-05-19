@@ -22,7 +22,7 @@ export function SeriesCard({ series }: SeriesCardProps) {
 
   return (
     <Link href={`/sonarr/series/${series.id}`}>
-      <div className="group relative rounded-xl border border-white/[0.04] bg-white/[0.02] backdrop-blur-xl overflow-hidden transition-all duration-300 hover:border-white/[0.08] hover:bg-white/[0.04] hover:scale-[1.02] hover:shadow-[0_0_30px_-10px_rgba(34,211,238,0.15)] cursor-pointer">
+      <div className="group relative cursor-pointer overflow-hidden rounded-lg border border-border bg-card transition-colors duration-150 hover:border-border-glow hover:bg-card-hover">
         {/* Poster */}
         <div className="relative aspect-[2/3] bg-white/[0.02]">
           {posterUrl ? (
@@ -50,7 +50,7 @@ export function SeriesCard({ series }: SeriesCardProps) {
             <span
               className={`inline-block h-2.5 w-2.5 rounded-full ${
                 series.monitored
-                  ? "bg-accent-emerald shadow-[0_0_8px_2px_rgba(16,185,129,0.5)]"
+                  ? "bg-accent-emerald"
                   : "bg-muted/50"
               }`}
             />

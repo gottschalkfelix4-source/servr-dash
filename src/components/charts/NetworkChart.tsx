@@ -48,29 +48,13 @@ export const NetworkChart = memo(function NetworkChart({
   return (
     <ResponsiveContainer width="100%" height={200}>
       <LineChart data={chartData}>
-        <defs>
-          <filter id="netGlowGreen">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <filter id="netGlowAmber">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        <CartesianGrid stroke="rgba(148, 163, 184, 0.08)" vertical={false} />
+        <CartesianGrid stroke="#2a2a2e" vertical={false} />
         <XAxis
           dataKey="timestamp"
           type="number"
           domain={hasLiveWindow ? [liveNow - windowMs, liveNow] : ["dataMin", "dataMax"]}
           allowDataOverflow={hasLiveWindow}
-          tick={{ fontSize: 10, fill: "#64748b" }}
+          tick={{ fontSize: 10, fill: "#9b9ba3" }}
           axisLine={false}
           tickLine={false}
           interval="preserveStartEnd"
@@ -78,17 +62,14 @@ export const NetworkChart = memo(function NetworkChart({
           tickFormatter={(value) => formatChartTime(Number(value), range)}
         />
         <YAxis
-          tick={{ fontSize: 10, fill: "#64748b" }}
+          tick={{ fontSize: 10, fill: "#9b9ba3" }}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v) => formatBytes(v) + "/s"}
           width={70}
         />
         <Tooltip
-          contentStyle={{
-            ...commonTooltipStyle,
-            boxShadow: "0 0 20px -5px rgba(16, 185, 129, 0.15)",
-          }}
+          contentStyle={commonTooltipStyle}
           labelFormatter={(value) => formatTooltipTime(Number(value), range)}
           formatter={(value, name) => [
             `${formatBytes(Number(value))}/s`,
@@ -97,25 +78,23 @@ export const NetworkChart = memo(function NetworkChart({
         />
         <Legend
           formatter={(value) => (value === "rx" ? "Download" : "Upload")}
-          wrapperStyle={{ fontSize: 12, color: "#94a3b8" }}
+          wrapperStyle={{ fontSize: 12, color: "#9b9ba3" }}
         />
         <Line
           type="monotone"
           dataKey="rx"
-          stroke="#10b981"
+          stroke="#56c98a"
           strokeWidth={2}
           dot={false}
-          filter="url(#netGlowGreen)"
           connectNulls
           isAnimationActive={false}
         />
         <Line
           type="monotone"
           dataKey="tx"
-          stroke="#f59e0b"
+          stroke="#e7b75f"
           strokeWidth={2}
           dot={false}
-          filter="url(#netGlowAmber)"
           connectNulls
           isAnimationActive={false}
         />

@@ -49,45 +49,41 @@ export default function LoginPage() {
 
   if (needsSetup === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 border-2 border-accent-cyan border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-cyan border-t-transparent" />
       </div>
     );
   }
 
   const inputClass =
-    "w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-accent-cyan/50 focus:shadow-[0_0_20px_-5px_rgba(34,211,238,0.3)] transition-all duration-200 placeholder:text-muted";
+    "w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted transition-colors duration-150 focus:border-accent-cyan focus:outline-none";
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="h-14 w-14 rounded-2xl bg-accent-cyan/15 flex items-center justify-center mb-4 shadow-[0_0_20px_-5px_rgba(34,211,238,0.4)]">
+        <div className="mb-6 flex flex-col items-center">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md border border-border bg-card">
             <Server size={28} className="text-accent-cyan" />
           </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
-            Servr Dash
-          </h1>
-          <p className="text-sm text-muted mt-1">
+          <h1 className="text-xl font-semibold text-foreground">Servr Dash</h1>
+          <p className="mt-1 text-sm text-muted">
             {needsSetup ? "Admin-Account erstellen" : "Anmelden"}
           </p>
         </div>
 
-        {/* Form */}
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-white/[0.06] bg-card backdrop-blur-xl p-6 shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)]"
+          className="rounded-lg border border-border bg-card p-5"
         >
           {needsSetup && (
-            <div className="mb-4 p-3 rounded-lg bg-accent-cyan/10 border border-accent-cyan/20 text-sm text-accent-cyan">
+            <div className="mb-4 rounded-md border border-accent-cyan/20 bg-accent-cyan/10 p-3 text-sm text-accent-cyan">
               Erstelle deinen Admin-Account um loszulegen.
             </div>
           )}
 
-          <div className="space-y-4 mb-6">
+          <div className="mb-6 space-y-4">
             <div>
-              <label className="text-xs text-muted mb-1.5 block">
+              <label className="mb-1.5 block text-xs text-muted">
                 Benutzername
               </label>
               <input
@@ -102,7 +98,7 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-muted mb-1.5 block">
+              <label className="mb-1.5 block text-xs text-muted">
                 Passwort
               </label>
               <input
@@ -110,7 +106,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={inputClass}
-                placeholder="••••••••"
+                placeholder="********"
                 autoComplete={needsSetup ? "new-password" : "current-password"}
                 required
                 minLength={8}
@@ -119,7 +115,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-accent-red/10 border border-accent-red/20 text-sm text-accent-red">
+            <div className="mb-4 rounded-md border border-accent-red/20 bg-accent-red/10 p-3 text-sm text-accent-red">
               {error}
             </div>
           )}
@@ -127,10 +123,10 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || !username || !password}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-accent-cyan text-background font-medium text-sm hover:bg-accent-cyan/90 hover:shadow-[0_0_20px_-5px_rgba(34,211,238,0.4)] transition-all duration-200 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-accent-cyan py-2.5 text-sm font-medium text-background transition-colors duration-150 hover:bg-accent-cyan/90 disabled:opacity-50"
           >
             {loading ? (
-              <div className="h-4 w-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
             ) : needsSetup ? (
               <>
                 <UserPlus size={16} />

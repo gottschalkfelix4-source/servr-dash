@@ -181,7 +181,7 @@ export default function DashboardOverview() {
               <Activity size={16} className="text-accent-cyan mr-2 inline" />
               Server
             </CardTitle>
-            <Link href="/servers" className="text-xs text-muted hover:text-accent-cyan transition-colors flex items-center gap-1">
+            <Link href="/servers" className="flex items-center gap-1 text-xs text-muted transition-colors hover:text-accent-cyan">
               Alle <ArrowRight size={12} />
             </Link>
           </CardHeader>
@@ -212,7 +212,7 @@ export default function DashboardOverview() {
           </CardHeader>
           <div className="grid grid-cols-2 gap-3">
             {/* Radarr */}
-            <Link href="/radarr/movies" className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all">
+            <Link href="/radarr/movies" className="rounded-md border border-border bg-card-solid p-3 transition-colors hover:bg-card-hover">
               <div className="flex items-center gap-2 mb-2">
                 <Film size={14} className="text-accent-amber" />
                 <span className="text-xs text-muted">Filme</span>
@@ -234,7 +234,7 @@ export default function DashboardOverview() {
             </Link>
 
             {/* Sonarr */}
-            <Link href="/sonarr/series" className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all">
+            <Link href="/sonarr/series" className="rounded-md border border-border bg-card-solid p-3 transition-colors hover:bg-card-hover">
               <div className="flex items-center gap-2 mb-2">
                 <Clapperboard size={14} className="text-accent-cyan" />
                 <span className="text-xs text-muted">Serien</span>
@@ -256,7 +256,7 @@ export default function DashboardOverview() {
             </Link>
 
             {/* Plex Libraries */}
-            <Link href="/plex" className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all">
+            <Link href="/plex" className="rounded-md border border-border bg-card-solid p-3 transition-colors hover:bg-card-hover">
               <div className="flex items-center gap-2 mb-2">
                 <Tv size={14} className="text-accent-purple" />
                 <span className="text-xs text-muted">Plex</span>
@@ -277,7 +277,7 @@ export default function DashboardOverview() {
             </Link>
 
             {/* Storage total */}
-            <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+            <div className="rounded-md border border-border bg-card-solid p-3">
               <div className="flex items-center gap-2 mb-2">
                 <HardDrive size={14} className="text-muted" />
                 <span className="text-xs text-muted">Speicher</span>
@@ -348,7 +348,7 @@ export default function DashboardOverview() {
               <Database size={16} className="text-accent-amber mr-2 inline" />
               Indexer
             </CardTitle>
-            <Link href="/indexer" className="text-xs text-muted hover:text-accent-cyan transition-colors flex items-center gap-1">
+            <Link href="/indexer" className="flex items-center gap-1 text-xs text-muted transition-colors hover:text-accent-cyan">
               Details <ArrowRight size={12} />
             </Link>
           </CardHeader>
@@ -366,7 +366,7 @@ export default function DashboardOverview() {
                 user?: { grabs: number };
               }) => {
                 if (!idx.online) return (
-                  <div key={idx.name} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                  <div key={idx.name} className="rounded-md border border-border bg-card-solid p-3">
                     <div className="flex items-center gap-2 mb-1">
                       <StatusDot status="offline" />
                       <span className="text-sm font-medium">{idx.name}</span>
@@ -381,7 +381,7 @@ export default function DashboardOverview() {
                 const grabPercent = grabMax > 0 ? (grabCurrent / grabMax) * 100 : 0;
 
                 return (
-                  <Link key={idx.name} href="/indexer" className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all">
+                  <Link key={idx.name} href="/indexer" className="rounded-md border border-border bg-card-solid p-3 transition-colors hover:bg-card-hover">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <StatusDot status="online" />
@@ -402,14 +402,14 @@ export default function DashboardOverview() {
                             <span className="text-muted"> / {grabMax} frei</span>
                           </span>
                         </div>
-                        <div className="h-2 rounded-full bg-white/[0.05] overflow-hidden">
+                        <div className="h-2 overflow-hidden rounded-sm bg-white/[0.06]">
                           <div
-                            className={`h-full rounded-full transition-all duration-500 ${
+                            className={`h-full rounded-sm transition-[width] duration-300 ${
                               grabPercent > 90
-                                ? "bg-gradient-to-r from-red-600 to-red-400"
+                                ? "bg-accent-red"
                                 : grabPercent > 70
-                                ? "bg-gradient-to-r from-amber-600 to-amber-400"
-                                : "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                                ? "bg-accent-amber"
+                                : "bg-accent-emerald"
                             }`}
                             style={{ width: `${Math.min(grabPercent, 100)}%` }}
                           />
@@ -503,17 +503,17 @@ function ServiceStatusCard({
   sub: string;
 }) {
   const colorMap: Record<string, string> = {
-    cyan: "text-accent-cyan bg-accent-cyan/10 shadow-[0_0_12px_-4px_rgba(34,211,238,0.3)]",
-    purple: "text-accent-purple bg-accent-purple/10 shadow-[0_0_12px_-4px_rgba(167,139,250,0.3)]",
-    amber: "text-accent-amber bg-accent-amber/10 shadow-[0_0_12px_-4px_rgba(245,158,11,0.3)]",
-    emerald: "text-accent-emerald bg-accent-emerald/10 shadow-[0_0_12px_-4px_rgba(16,185,129,0.3)]",
+    cyan: "border-accent-cyan/20 bg-accent-cyan/10 text-accent-cyan",
+    purple: "border-accent-purple/20 bg-accent-purple/10 text-accent-purple",
+    amber: "border-accent-amber/20 bg-accent-amber/10 text-accent-amber",
+    emerald: "border-accent-emerald/20 bg-accent-emerald/10 text-accent-emerald",
   };
 
   return (
     <Link href={href}>
-      <div className="p-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-all cursor-pointer">
+      <div className="cursor-pointer rounded-lg border border-border bg-card p-3 transition-colors hover:border-border-glow hover:bg-card-hover">
         <div className="flex items-center justify-between mb-2">
-          <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${colorMap[color]}`}>
+          <div className={`flex h-7 w-7 items-center justify-center rounded-md border ${colorMap[color]}`}>
             {icon}
           </div>
           <StatusDot status={status} />
@@ -535,7 +535,7 @@ function ServerQuickRow({
   return (
     <Link
       href={`/servers/${server.id}`}
-      className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all"
+      className="flex items-center gap-3 rounded-md border border-border bg-card-solid p-2.5 transition-colors hover:bg-card-hover"
     >
       <StatusDot status={metrics ? "online" : "unknown"} />
       <div className="flex-1 min-w-0">
@@ -572,7 +572,7 @@ function ServerQuickRow({
           <span className="text-xs text-muted">Verbinde...</span>
         )}
         {metrics?.gpus?.[0] && (
-          <div className="mt-3 rounded-lg border border-white/[0.04] bg-white/[0.02] p-2">
+          <div className="mt-3 rounded-md border border-border bg-background p-2">
             <div className="flex items-center justify-between gap-3 mb-1.5">
               <div className="min-w-0">
                 <span className="text-xs font-medium truncate block">
@@ -607,9 +607,9 @@ function MetricMini({ label, value }: { label: string; value: number }) {
         <span className="text-[10px] text-muted">{label}</span>
         <span className="text-[10px] font-medium">{value}%</span>
       </div>
-      <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="h-1 overflow-hidden rounded-sm bg-white/[0.06]">
         <div
-          className={`h-full rounded-full ${barColor} transition-all duration-500`}
+          className={`h-full rounded-sm ${barColor} transition-[width] duration-300`}
           style={{ width: `${value > 0 ? Math.min(value, 100) : 0}%` }}
         />
       </div>
@@ -650,7 +650,7 @@ function QueueRow({
   const progress = size > 0 ? Math.round(((size - sizeleft) / size) * 100) : 0;
 
   return (
-    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+    <div className="flex items-center gap-3 rounded-md border border-border bg-card-solid p-2.5">
       {type === "film" ? (
         <Film size={14} className="text-accent-amber flex-shrink-0" />
       ) : (
@@ -694,7 +694,7 @@ function CalendarRow({
     : "—";
 
   return (
-    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+    <div className="flex items-center gap-3 rounded-md border border-border bg-card-solid p-2.5">
       {type === "film" ? (
         <Film size={14} className="text-accent-amber flex-shrink-0" />
       ) : (

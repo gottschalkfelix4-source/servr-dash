@@ -49,27 +49,24 @@ export function TopBar() {
   };
 
   return (
-    <header className="h-14 sm:h-16 border-b border-white/[0.06] bg-card-solid/40 backdrop-blur-xl flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top,0px)] lg:pt-0">
+    <header className="flex h-14 items-center justify-between border-b border-border bg-card-solid px-3 pt-[env(safe-area-inset-top,0px)] sm:h-16 sm:px-6 lg:pt-0">
       <div className="flex items-center gap-3 pl-12 lg:pl-0">
         <h1 className="text-base sm:text-lg font-semibold truncate">{title}</h1>
       </div>
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 text-xs text-muted">
-          <div className="relative">
-            <Activity size={14} className="text-accent-emerald" />
-            <div className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-accent-emerald animate-pulse-glow" />
-          </div>
+          <Activity size={14} className="text-accent-emerald" />
           <span>Live</span>
         </div>
         {user && (
-          <div className="flex items-center gap-2 pl-3 border-l border-white/[0.06]">
+          <div className="flex items-center gap-2 border-l border-border pl-3">
             <div className="flex items-center gap-1.5 text-xs text-muted">
               <User size={13} />
               <span>{user.username}</span>
             </div>
             <button
               onClick={handleLogout}
-              className="p-1.5 rounded-lg text-muted hover:text-accent-red hover:bg-accent-red/10 transition-all"
+              className="rounded-md p-1.5 text-muted transition-colors hover:bg-card-hover hover:text-accent-red"
               title="Abmelden"
             >
               <LogOut size={14} />

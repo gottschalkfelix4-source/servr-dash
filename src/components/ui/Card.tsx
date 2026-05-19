@@ -8,15 +8,14 @@ interface CardProps {
 }
 
 export function Card({ children, className, hover = false, glow }: CardProps) {
-  const glowClass = glow ? `glow-${glow}` : "";
+  const accentClass = glow ? "border-border-glow" : "";
 
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card backdrop-blur-xl p-5 transition-all duration-300",
-        hover && "hover:bg-card-hover hover:border-border-glow cursor-pointer hover:shadow-[0_0_30px_-10px_rgba(34,211,238,0.15)]",
-        glowClass,
-        "gradient-border",
+        "rounded-lg border border-border bg-card p-4 transition-colors duration-150 sm:p-5",
+        hover && "cursor-pointer hover:border-border-glow hover:bg-card-hover",
+        accentClass,
         className
       )}
     >
@@ -33,7 +32,7 @@ export function CardHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center justify-between mb-4 pb-3 border-b border-border", className)}>
+    <div className={cn("mb-4 flex items-center justify-between border-b border-border pb-3", className)}>
       {children}
     </div>
   );
@@ -47,7 +46,7 @@ export function CardTitle({
   className?: string;
 }) {
   return (
-    <h3 className={cn("text-sm font-medium text-muted", className)}>
+    <h3 className={cn("text-sm font-semibold text-foreground", className)}>
       {children}
     </h3>
   );

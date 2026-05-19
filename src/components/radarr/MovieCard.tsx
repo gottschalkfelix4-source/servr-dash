@@ -13,7 +13,7 @@ function getPosterUrl(movie: RadarrMovie): string | null {
 
 function getFileStatus(movie: RadarrMovie) {
   if (movie.hasFile) return { label: "Vorhanden", variant: "success" as const };
-  if (!movie.monitored) return { label: "Nicht\überwacht", variant: "default" as const };
+  if (!movie.monitored) return { label: "Nicht ueberwacht", variant: "default" as const };
   return { label: "Fehlend", variant: "danger" as const };
 }
 
@@ -27,7 +27,7 @@ export function MovieCard({ movie }: MovieCardProps) {
 
   return (
     <Link href={`/radarr/movies/${movie.id}`}>
-      <div className="group relative rounded-xl border border-border bg-card backdrop-blur-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:border-border-glow hover:shadow-[0_0_30px_-10px_rgba(34,211,238,0.15)] cursor-pointer gradient-border">
+      <div className="group relative cursor-pointer overflow-hidden rounded-lg border border-border bg-card transition-colors duration-150 hover:border-border-glow hover:bg-card-hover">
         {/* Poster */}
         <div className="relative aspect-[2/3] bg-white/[0.02]">
           {posterUrl ? (

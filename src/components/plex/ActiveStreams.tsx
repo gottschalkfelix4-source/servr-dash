@@ -49,8 +49,8 @@ function StreamRow({ session }: { session: PlexSession }) {
   const isTranscoding = session.videoDecision === "transcode";
 
   return (
-    <div className="flex items-center gap-4 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] hover:shadow-[0_0_20px_-8px_rgba(167,139,250,0.15)] transition-all duration-200">
-      <div className="h-12 w-12 rounded-lg bg-accent-purple/10 flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_-3px_rgba(167,139,250,0.3)]">
+    <div className="flex items-center gap-4 rounded-md border border-border bg-card-solid p-3 transition-colors hover:bg-card-hover">
+      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-md border border-accent-purple/20 bg-accent-purple/10">
         <Play size={20} className="text-accent-purple" />
       </div>
       <div className="flex-1 min-w-0">

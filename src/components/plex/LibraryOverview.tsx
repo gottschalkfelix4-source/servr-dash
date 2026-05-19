@@ -6,22 +6,18 @@ interface LibraryOverviewProps {
   libraries: PlexLibrary[];
 }
 
-const typeConfig: Record<string, { icon: React.ReactNode; glow: string }> = {
+const typeConfig: Record<string, { icon: React.ReactNode }> = {
   movie: {
     icon: <Film size={24} className="text-accent-cyan" />,
-    glow: "hover:shadow-[0_0_25px_-8px_rgba(34,211,238,0.3)]",
   },
   show: {
     icon: <Tv size={24} className="text-accent-purple" />,
-    glow: "hover:shadow-[0_0_25px_-8px_rgba(167,139,250,0.3)]",
   },
   artist: {
     icon: <Music size={24} className="text-accent-amber" />,
-    glow: "hover:shadow-[0_0_25px_-8px_rgba(245,158,11,0.3)]",
   },
   photo: {
     icon: <ImageIcon size={24} className="text-accent-emerald" />,
-    glow: "hover:shadow-[0_0_25px_-8px_rgba(16,185,129,0.3)]",
   },
 };
 
@@ -38,9 +34,9 @@ export function LibraryOverview({ libraries }: LibraryOverviewProps) {
       {libraries.map((lib) => {
         const config = typeConfig[lib.type] || typeConfig.movie;
         return (
-          <Card key={lib.key} hover className={config.glow}>
+          <Card key={lib.key} hover>
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-12 w-12 rounded-lg bg-white/[0.03] flex items-center justify-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-md border border-border bg-card-solid">
                 {config.icon}
               </div>
               <div>

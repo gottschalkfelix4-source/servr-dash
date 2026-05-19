@@ -53,13 +53,13 @@ export const GpuChart = memo(function GpuChart({
   return (
     <ResponsiveContainer width="100%" height={200}>
       <LineChart data={chartData}>
-        <CartesianGrid stroke="rgba(148, 163, 184, 0.08)" vertical={false} />
+        <CartesianGrid stroke="#2a2a2e" vertical={false} />
         <XAxis
           dataKey="timestamp"
           type="number"
           domain={hasLiveWindow ? [liveNow - windowMs, liveNow] : ["dataMin", "dataMax"]}
           allowDataOverflow={hasLiveWindow}
-          tick={{ fontSize: 10, fill: "#64748b" }}
+          tick={{ fontSize: 10, fill: "#9b9ba3" }}
           axisLine={false}
           tickLine={false}
           interval="preserveStartEnd"
@@ -68,17 +68,14 @@ export const GpuChart = memo(function GpuChart({
         />
         <YAxis
           domain={[0, 100]}
-          tick={{ fontSize: 10, fill: "#64748b" }}
+          tick={{ fontSize: 10, fill: "#9b9ba3" }}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v) => `${v}%`}
           width={40}
         />
         <Tooltip
-          contentStyle={{
-            ...commonTooltipStyle,
-            boxShadow: "0 0 20px -5px rgba(34, 211, 238, 0.15)",
-          }}
+          contentStyle={commonTooltipStyle}
           labelFormatter={(value) => formatTooltipTime(Number(value), range)}
           formatter={(value, name) => [
             `${Number(value).toFixed(1)}%`,
@@ -87,12 +84,12 @@ export const GpuChart = memo(function GpuChart({
         />
         <Legend
           formatter={(value) => (value === "gpu" ? "GPU" : "VRAM")}
-          wrapperStyle={{ fontSize: 12, color: "#94a3b8" }}
+          wrapperStyle={{ fontSize: 12, color: "#9b9ba3" }}
         />
         <Line
           type="monotone"
           dataKey="gpu"
-          stroke="#22d3ee"
+          stroke="#78c6a3"
           strokeWidth={2}
           dot={false}
           connectNulls
@@ -101,7 +98,7 @@ export const GpuChart = memo(function GpuChart({
         <Line
           type="monotone"
           dataKey="memory"
-          stroke="#a78bfa"
+          stroke="#b9a1e6"
           strokeWidth={2}
           dot={false}
           connectNulls

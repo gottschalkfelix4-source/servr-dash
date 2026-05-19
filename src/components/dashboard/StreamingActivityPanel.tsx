@@ -120,7 +120,7 @@ export function StreamingActivityPanel({
           </Badge>
           <Link
             href="/plex/streams"
-            className="hidden sm:flex items-center gap-1 text-xs text-muted hover:text-accent-cyan transition-colors"
+            className="hidden items-center gap-1 text-xs text-muted transition-colors hover:text-accent-cyan sm:flex"
           >
             Details <ArrowRight size={12} />
           </Link>
@@ -152,7 +152,7 @@ export function StreamingActivityPanel({
       </div>
 
       {sessions.length === 0 ? (
-        <div className="flex items-center justify-center gap-3 rounded-lg border border-white/[0.04] bg-white/[0.02] py-6 text-sm text-muted">
+        <div className="flex items-center justify-center gap-3 rounded-md border border-border bg-card-solid py-6 text-sm text-muted">
           <Activity size={18} className="text-muted/60" />
           {plexOnline === false
             ? "Plex ist aktuell nicht erreichbar."
@@ -188,9 +188,9 @@ function StreamStat({
       : "text-accent-purple bg-accent-purple/10";
 
   return (
-    <div className="rounded-lg border border-white/[0.04] bg-white/[0.02] p-3">
+    <div className="rounded-md border border-border bg-card-solid p-3">
       <div className="flex items-center justify-between gap-2">
-        <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${toneClass}`}>
+        <div className={`flex h-7 w-7 items-center justify-center rounded-md ${toneClass}`}>
           {icon}
         </div>
         <span className="text-sm font-semibold tabular-nums">{value}</span>
@@ -212,10 +212,10 @@ function StreamSessionRow({ session }: { session: PlexSession }) {
   ].filter(Boolean);
 
   return (
-    <div className="rounded-lg border border-white/[0.04] bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04]">
+    <div className="rounded-md border border-border bg-card-solid p-3 transition-colors hover:bg-card-hover">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
         <div className="flex min-w-0 flex-1 gap-3">
-          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-accent-purple/10 text-accent-purple shadow-[0_0_12px_-4px_rgba(167,139,250,0.45)]">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md border border-accent-purple/20 bg-accent-purple/10 text-accent-purple">
             {isPaused ? <Pause size={18} /> : <Play size={18} />}
           </div>
           <div className="min-w-0 flex-1">
@@ -267,7 +267,7 @@ function StreamSessionRow({ session }: { session: PlexSession }) {
       </div>
 
       {session.transcodeProgress !== undefined && (
-        <div className="mt-3 rounded-lg border border-accent-amber/10 bg-accent-amber/5 p-2">
+        <div className="mt-3 rounded-md border border-accent-amber/20 bg-accent-amber/5 p-2">
           <div className="mb-1 flex items-center justify-between text-[11px]">
             <span className="text-accent-amber">Transcoder</span>
             <span className="font-mono text-muted">
@@ -294,8 +294,8 @@ function StreamDetail({
   value: string;
 }) {
   return (
-    <div className="rounded-lg bg-white/[0.025] p-2">
-      <div className="mb-1 flex items-center gap-1.5 text-[10px] uppercase text-muted">
+    <div className="rounded-md border border-border bg-background p-2">
+      <div className="mb-1 flex items-center gap-1.5 text-[10px] text-muted">
         {icon}
         {label}
       </div>
